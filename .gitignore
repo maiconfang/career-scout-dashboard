@@ -1,0 +1,78 @@
+# Dependencies
+node_modules/
+
+# Production and framework output
+dist/
+build/
+out/
+.vite/
+.cache/
+.parcel-cache/
+.turbo/
+
+# Test and coverage output
+coverage/
+test-results/
+playwright-report/
+*.lcov
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment and local configuration
+.env
+.env.*
+!.env.example
+*.local
+
+# TypeScript and tooling caches
+*.tsbuildinfo
+.eslintcache
+.stylelintcache
+
+# Temporary files
+.tmp/
+tmp/
+temp/
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.code-workspace
+
+# Operating system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Local agent tooling
+.agents/
+.codex/
+
+# Legacy local Career Scout snapshots (not used by the active application)
+/data/out/
+
+# Local design and validation artifacts retained outside the official source
+/design-mockups/
+/history-desktop*.png
+/history-mobile.png
+/skills-gap-desktop*.png
+/skills-gap-mobile.png
+
+# Historical working notes superseded by README.md
+/docs/project-context.md
+/docs/dashboard-project-context.md
