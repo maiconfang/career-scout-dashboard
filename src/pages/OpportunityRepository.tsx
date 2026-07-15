@@ -1,6 +1,16 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import PageState from '../components/PageState'
+import {
+  EmptyState,
+  ErrorState,
+  FormSection,
+  LoadingState,
+  PageContainer,
+  PageHeader,
+  SearchToolbar,
+  SectionCard,
+  StatusBadge
+} from '../components/design-system'
 import {
   Campaign,
   listCampaigns,
@@ -25,11 +35,11 @@ function readable(value: string | null) {
   return value.toLowerCase().replaceAll('_', ' ').replace(/^\w/, letter => letter.toUpperCase())
 }
 
-function recommendationClass(status: string) {
-  if (status === 'RECOMMENDED') return 'bg-emerald-50 text-emerald-700'
-  if (status === 'REJECTED' || status === 'NOT_RECOMMENDED') return 'bg-red-50 text-red-700'
-  if (status === 'ALIGNED') return 'bg-blue-50 text-blue-700'
-  return 'bg-slate-100 text-slate-600'
+function recommendationTone(status: string): 'emerald' | 'red' | 'blue' | 'slate' {
+  if (status === 'RECOMMENDED') return 'emerald'
+  if (status === 'REJECTED' || status === 'NOT_RECOMMENDED') return 'red'
+  if (status === 'ALIGNED') return 'blue'
+  return 'slate'
 }
 
 export default function OpportunityRepository() {
@@ -79,14 +89,16 @@ export default function OpportunityRepository() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5">
-      <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Opportunity Repository</div>
-        <h2 className="mt-1 text-2xl font-extrabold text-agent-primary">All persisted opportunities</h2>
-        <p className="mt-2 text-sm text-slate-600">Audit collected, rejected, aligned, recommended, and recurring opportunities without changing the Opportunity Inbox.</p>
+    <PageContainer className="space-y-5" size="lg">
+      <PageHeader
+        eyebrow="Opportunity Repository"
+        title="All persisted opportunities"
+        description="Audit collected, rejected, aligned, recommended, and recurring opportunities without changing the Opportunity Inbox."
+      />
 
-        <form className="mt-5 space-y-3" onSubmit={applyFilters}>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+      <SearchToolbar>
+        <form className="w-full space-y-3" onSubmit={applyFilters}>
+          <FormSection className="lg:grid-cols-4">
             <input aria-label="Search repository" className="rounded-lg border border-slate-200 px-3 py-2 text-sm lg:col-span-2" onChange={event => updateFilter('q', event.target.value)} placeholder="Search title, company, description" value={draftFilters.q} />
             <input aria-label="Filter company" className="rounded-lg border border-slate-200 px-3 py-2 text-sm" onChange={event => updateFilter('company', event.target.value)} placeholder="Company" value={draftFilters.company} />
             <select aria-label="Filter recommendation" className="rounded-lg border border-slate-200 px-3 py-2 text-sm" onChange={event => updateFilter('recommendation', event.target.value)} value={draftFilters.recommendation}>
@@ -117,28 +129,28 @@ export default function OpportunityRepository() {
             }} value={`${draftFilters.sort_by}:${draftFilters.order}`}>
               <option value="last_discovered_at:desc">Last discovered · newest</option><option value="first_discovered_at:desc">First discovered · newest</option><option value="match_score:desc">Match score · highest</option><option value="company:asc">Company · A–Z</option><option value="title:asc">Title · A–Z</option>
             </select>
-          </div>
+          </FormSection>
           <div className="flex flex-wrap gap-2">
             <button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" type="submit">Apply filters</button>
             <button className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={clearFilters} type="button">Clear</button>
           </div>
         </form>
-      </section>
+      </SearchToolbar>
 
-      {loading && <PageState title="Loading repository" message="Fetching persisted opportunities from the Career Scout API." />}
-      {!loading && error && <PageState title="Opportunity Repository is unavailable" message={error} action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>Try again</button>} />}
-      {!loading && !error && opportunities.length === 0 && <PageState title="No opportunities found" message="No persisted opportunities match the selected filters." />}
+      {loading && <LoadingState title="Loading repository" message="Fetching persisted opportunities from the Career Scout API." />}
+      {!loading && error && <ErrorState title="Opportunity Repository is unavailable" message={error} action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>Try again</button>} />}
+      {!loading && !error && opportunities.length === 0 && <EmptyState title="No opportunities found" message="No persisted opportunities match the selected filters." />}
 
       {!loading && !error && opportunities.length > 0 && (
         <>
           <div className="flex items-center justify-between text-xs text-slate-500"><span>Showing {offset + 1}–{offset + returned}</span><span>Complete persisted repository</span></div>
           <div className="space-y-3">
             {opportunities.map(opportunity => (
-              <article className="rounded-xl border border-slate-100 bg-white p-5 shadow-card" key={opportunity.opportunity_id}>
+              <SectionCard key={opportunity.opportunity_id}>
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap gap-2">
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${recommendationClass(opportunity.recommendation_status)}`}>{readable(opportunity.recommendation_status)}</span>
+                      <StatusBadge tone={recommendationTone(opportunity.recommendation_status)} className="font-semibold">{readable(opportunity.recommendation_status)}</StatusBadge>
                       {opportunity.decision && <span className="rounded-full bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white">{readable(opportunity.decision)}</span>}
                       {opportunity.match_score !== null && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">{Math.round(opportunity.match_score)}% match</span>}
                     </div>
@@ -156,7 +168,7 @@ export default function OpportunityRepository() {
                     {opportunity.job_url && <a className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" href={opportunity.job_url} rel="noreferrer" target="_blank">Open LinkedIn</a>}
                   </div>
                 </div>
-              </article>
+              </SectionCard>
             ))}
           </div>
           <div className="flex items-center justify-between pt-2">
@@ -164,6 +176,6 @@ export default function OpportunityRepository() {
           </div>
         </>
       )}
-    </div>
+    </PageContainer>
   )
 }

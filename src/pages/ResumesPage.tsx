@@ -1,6 +1,16 @@
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react'
 import { archiveResume, listResumes, resumeDownloadUrl, setDefaultResume, uploadResume, type CandidateResume } from '../lib/resumeApi'
 import { useLanguage } from '../i18n/LanguageProvider'
+import {
+  EmptyState,
+  ErrorAlert,
+  LoadingState,
+  PageContainer,
+  SectionCard,
+  StatusBadge,
+  SuccessAlert,
+  ConfirmationDialog
+} from '../components/design-system'
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -33,6 +43,7 @@ export default function ResumesPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [resumeToArchive, setResumeToArchive] = useState<CandidateResume | null>(null)
 
   function load() {
     setLoading(true)
@@ -106,8 +117,8 @@ export default function ResumesPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5">
-      <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
+    <PageContainer className="space-y-5" size="lg">
+      <SectionCard>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('career.section')}</div>
@@ -121,13 +132,13 @@ export default function ResumesPage() {
             </div>
             <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
               <div className="text-xs font-semibold uppercase text-slate-500">{t('resumes.default')}</div>
-              <div className="max-w-36 truncate text-sm font-bold text-agent-primary">{defaultResume?.display_name ?? '—'}</div>
+              <div className="max-w-36 truncate text-sm font-bold text-agent-primary">{defaultResume?.display_name ?? '-'}</div>
             </div>
           </div>
         </div>
-      </section>
+      </SectionCard>
 
-      <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
+      <SectionCard>
         <form className="grid gap-4 lg:grid-cols-[1.2fr_1fr_auto]" onSubmit={handleUpload}>
           <label className="block">
             <span className="text-sm font-medium text-slate-700">{t('resumes.file')}</span>
@@ -156,18 +167,18 @@ export default function ResumesPage() {
           <input id="include-archived" checked={includeArchived} type="checkbox" onChange={event => setIncludeArchived(event.target.checked)} />
           <label className="text-sm font-medium text-slate-600" htmlFor="include-archived">{t('resumes.includeArchived')}</label>
         </div>
-        {message && <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{message}</div>}
-        {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
-      </section>
+        {message && <SuccessAlert className="mt-4">{message}</SuccessAlert>}
+        {error && <ErrorAlert className="mt-4">{error}</ErrorAlert>}
+      </SectionCard>
 
-      <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-card">
+      <SectionCard className="overflow-hidden" padded={false}>
         <div className="border-b border-slate-100 px-5 py-4">
           <h3 className="text-lg font-extrabold text-agent-primary">{t('resumes.library')}</h3>
           <p className="text-sm text-slate-500">{t('resumes.libraryDescription')}</p>
         </div>
 
-        {loading && <div className="p-5 text-sm text-slate-500">{t('resumes.loading')}</div>}
-        {!loading && resumes.length === 0 && <div className="p-5 text-sm text-slate-500">{t('resumes.empty')}</div>}
+        {loading && <LoadingState title={t('resumes.loading')} message={t('resumes.loading')} />}
+        {!loading && resumes.length === 0 && <EmptyState title={t('resumes.empty')} message={t('resumes.empty')} />}
 
         {!loading && resumes.length > 0 && (
           <div className="divide-y divide-slate-100">
@@ -176,8 +187,8 @@ export default function ResumesPage() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h4 className="text-base font-extrabold text-agent-primary">{resume.display_name}</h4>
-                    <span className={`rounded-full px-2 py-1 text-xs font-bold ${resume.active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{resume.status}</span>
-                    {resume.is_default && <span className="rounded-full bg-brand-50 px-2 py-1 text-xs font-bold text-brand-700">{t('resumes.default')}</span>}
+                    <StatusBadge tone={resume.active ? 'emerald' : 'slate'}>{resume.status}</StatusBadge>
+                    {resume.is_default && <StatusBadge tone="brand">{t('resumes.default')}</StatusBadge>}
                   </div>
                   <div className="mt-1 text-sm text-slate-500">{resume.filename}</div>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
@@ -202,7 +213,7 @@ export default function ResumesPage() {
                     </button>
                   )}
                   {resume.active && (
-                    <button className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" type="button" onClick={() => void handleArchive(resume.resume_id)}>
+                    <button className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" type="button" onClick={() => setResumeToArchive(resume)}>
                       {t('resumes.archive')}
                     </button>
                   )}
@@ -211,7 +222,22 @@ export default function ResumesPage() {
             ))}
           </div>
         )}
-      </section>
-    </div>
+      </SectionCard>
+      <ConfirmationDialog
+        open={resumeToArchive !== null}
+        title="Archive Resume"
+        description={resumeToArchive ? `Archive "${resumeToArchive.display_name}"? This resume will no longer be active.` : undefined}
+        confirmLabel={t('resumes.archive')}
+        cancelLabel="Cancel"
+        destructive
+        onCancel={() => setResumeToArchive(null)}
+        onConfirm={() => {
+          if (!resumeToArchive) return
+          const resumeId = resumeToArchive.resume_id
+          setResumeToArchive(null)
+          void handleArchive(resumeId)
+        }}
+      />
+    </PageContainer>
   )
 }

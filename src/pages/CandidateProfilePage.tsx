@@ -5,6 +5,16 @@ import {
   type CandidateProfilePayload
 } from '../lib/candidateProfileApi'
 import { useLanguage } from '../i18n/LanguageProvider'
+import {
+  ErrorAlert,
+  FormSection,
+  InfoAlert,
+  LoadingState,
+  PageContainer,
+  PageHeader,
+  SectionCard,
+  SuccessAlert
+} from '../components/design-system'
 
 const emptyProfile: CandidateProfilePayload = {
   current_occupation: '',
@@ -113,25 +123,24 @@ export default function CandidateProfilePage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5">
-      <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('career.section')}</div>
-            <h2 className="mt-1 text-2xl font-extrabold text-agent-primary">{t('candidateProfile.title')}</h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">{t('candidateProfile.description')}</p>
-          </div>
-          <div className="rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700">
+    <PageContainer className="space-y-5" size="lg">
+      <PageHeader
+        eyebrow={t('career.section')}
+        title={t('candidateProfile.title')}
+        description={t('candidateProfile.description')}
+        actions={
+          <InfoAlert className="px-3 py-2 text-xs">
             {t('candidateProfile.foundation')}
-          </div>
-        </div>
-      </section>
+          </InfoAlert>
+        }
+      />
 
-      <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
-        {loading && <div className="text-sm text-slate-500">{t('candidateProfile.loading')}</div>}
-        {!loading && (
+      {loading ? (
+        <LoadingState title={t('candidateProfile.loading')} message={t('candidateProfile.loading')} />
+      ) : (
+        <SectionCard>
           <form className="space-y-5" onSubmit={handleSubmit}>
-            <div className="grid gap-3 md:grid-cols-2">
+            <FormSection>
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">{t('candidateProfile.currentOccupation')}</span>
                 <input className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={profile.current_occupation} onChange={event => update('current_occupation', event.target.value)} />
@@ -180,17 +189,17 @@ export default function CandidateProfilePage() {
                 <span className="text-sm font-medium text-slate-700">{t('candidateProfile.currentResume')}</span>
                 <textarea className="mt-2 min-h-48 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={profile.current_resume} onChange={event => update('current_resume', event.target.value)} />
               </label>
-            </div>
+            </FormSection>
 
-            {message && <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{message}</div>}
-            {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
+            {message && <SuccessAlert>{message}</SuccessAlert>}
+            {error && <ErrorAlert>{error}</ErrorAlert>}
 
             <button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60" disabled={saving} type="submit">
               {saving ? t('candidateProfile.saving') : t('candidateProfile.save')}
             </button>
           </form>
-        )}
-      </section>
-    </div>
+        </SectionCard>
+      )}
+    </PageContainer>
   )
 }

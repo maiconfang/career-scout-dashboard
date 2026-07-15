@@ -1,3 +1,6 @@
+import { ApiRequestError, apiRequest, csrfToken } from './httpClient'
+export { csrfToken }
+
 export type PlatformUser = {
   user_id: string
   email: string
@@ -45,67 +48,24 @@ export class AuthApiError extends Error {
   }
 }
 
-const configuredBaseUrl = (import.meta.env.VITE_CAREER_SCOUT_API_URL as string | undefined)?.trim()
-const apiBaseUrl = configuredBaseUrl?.replace(/\/$/, '') ?? ''
-
-function apiUrl(path: string) {
-  return new URL(`${apiBaseUrl}${path}`, window.location.origin).toString()
-}
-
-export function csrfToken() {
-  return document.cookie
-    .split('; ')
-    .find(cookie => cookie.startsWith('career_scout_csrf='))
-    ?.split('=')
-    .slice(1)
-    .join('=')
-}
-
-async function parseError(response: Response) {
-  try {
-    const payload = await response.json()
-    if (typeof payload.detail === 'string') {
-      return payload.detail
-    }
-    if (payload.detail && typeof payload.detail.message === 'string') {
-      return payload.detail.message
-    }
-    if (typeof payload.message === 'string') {
-      return payload.message
-    }
-    return `Authentication request failed (${response.status}).`
-  } catch {
-    return `Authentication request failed (${response.status}).`
-  }
-}
-
 async function authRequest<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const headers = new Headers(options.headers)
-  headers.set('Accept', 'application/json')
-
-  if (options.body && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json')
+  try {
+    return await apiRequest<T>(path, {
+      ...options,
+      errorPrefix: 'Authentication request failed',
+      notFoundMessage: 'Authentication request failed (404).',
+      preferResponseDetail: true,
+      skipAuthRefresh: true
+    })
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      throw new AuthApiError(error.message, error.status)
+    }
+    throw error
   }
-
-  const csrf = csrfToken()
-  if (csrf && (options.method ?? 'GET').toUpperCase() !== 'GET') {
-    headers.set('X-CSRF-Token', decodeURIComponent(csrf))
-  }
-
-  const response = await fetch(apiUrl(path), {
-    ...options,
-    headers,
-    credentials: 'include'
-  })
-
-  if (!response.ok) {
-    throw new AuthApiError(await parseError(response), response.status)
-  }
-
-  return response.json() as Promise<T>
 }
 
 export function login(email: string, password: string) {

@@ -13,10 +13,30 @@ import {
   type PlatformUser
 } from '../lib/authApi'
 import { useLanguage } from '../i18n/LanguageProvider'
+import {
+  ErrorAlert,
+  FilterBar,
+  InfoAlert,
+  PageContainer,
+  PageHeader,
+  RoleBadge,
+  SectionCard,
+  StatusBadge,
+  SuccessAlert,
+  ConfirmationDialog
+} from '../components/design-system'
 
 const PAGE_SIZE = 10
 
 type SortField = 'display_name' | 'email' | 'role' | 'status' | 'locale' | 'created_at' | 'last_login_at'
+
+type PendingAdminAction = {
+  title: string
+  description: string
+  confirmLabel: string
+  destructive?: boolean
+  run: () => void
+}
 
 function formatDate(value?: string | null) {
   if (!value) return '—'
@@ -50,6 +70,7 @@ export default function AdminUsersPage() {
   const [tokenResult, setTokenResult] = useState<CreateUserResponse | null>(null)
   const [resetResult, setResetResult] = useState<PasswordResetTokenResponse | null>(null)
   const [creating, setCreating] = useState(false)
+  const [pendingAction, setPendingAction] = useState<PendingAdminAction | null>(null)
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
@@ -169,22 +190,20 @@ export default function AdminUsersPage() {
     setActionMessage(t('admin.tokenCopied'))
   }
 
-  return (
-    <div className="mx-auto w-full max-w-7xl space-y-5">
-      <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('admin.section')}</div>
-            <h2 className="mt-1 text-2xl font-extrabold text-agent-primary">{t('admin.usersTitle')}</h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">{t('admin.usersDescription')}</p>
-          </div>
-          <div className="rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700">
-            {t('admin.adminOnly')}
-          </div>
-        </div>
-      </section>
+  function confirmAdminAction(action: PendingAdminAction) {
+    setPendingAction(action)
+  }
 
-      <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
+  return (
+    <PageContainer className="space-y-5">
+      <PageHeader
+        eyebrow={t('admin.section')}
+        title={t('admin.usersTitle')}
+        description={t('admin.usersDescription')}
+        actions={<InfoAlert className="px-3 py-2 text-xs">{t('admin.adminOnly')}</InfoAlert>}
+      />
+
+      <SectionCard>
         <h3 className="text-lg font-semibold text-slate-900">{t('admin.createUser')}</h3>
         <form className="mt-4 grid gap-3 lg:grid-cols-6" onSubmit={handleCreateUser}>
           <input className="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder={t('admin.firstName')} value={form.first_name} onChange={event => setForm({ ...form, first_name: event.target.value })} required />
@@ -206,12 +225,12 @@ export default function AdminUsersPage() {
             </button>
           </div>
         </form>
-      </section>
+      </SectionCard>
 
       {(tokenResult || resetResult || actionMessage || error) && (
-        <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
-          {actionMessage && <div className="text-sm font-semibold text-emerald-700">{actionMessage}</div>}
-          {error && <div className="text-sm font-semibold text-red-700">{error}</div>}
+        <SectionCard>
+          {actionMessage && <SuccessAlert>{actionMessage}</SuccessAlert>}
+          {error && <ErrorAlert>{error}</ErrorAlert>}
           {tokenResult && (
             <div className="mt-3 space-y-2">
               <div className="text-sm font-semibold text-slate-800">{t('admin.activationToken')}</div>
@@ -230,11 +249,11 @@ export default function AdminUsersPage() {
               </button>
             </div>
           )}
-        </section>
+        </SectionCard>
       )}
 
-      <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
-        <div className="grid gap-2 lg:grid-cols-6">
+      <SectionCard>
+        <FilterBar className="grid gap-2 lg:grid-cols-6">
           <input className="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder={t('admin.searchByName')} value={query} onChange={event => { setOffset(0); setQuery(event.target.value) }} />
           <input className="rounded-lg border border-slate-200 px-3 py-2 text-sm" placeholder={t('admin.searchByEmail')} value={emailQuery} onChange={event => { setOffset(0); setEmailQuery(event.target.value) }} />
           <select className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" value={role} onChange={event => { setOffset(0); setRole(event.target.value) }}>
@@ -262,7 +281,7 @@ export default function AdminUsersPage() {
             <option value="asc">{t('admin.ascending')}</option>
             <option value="desc">{t('admin.descending')}</option>
           </select>
-        </div>
+        </FilterBar>
 
         <div className="mt-5 overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-100 text-sm">
@@ -292,19 +311,41 @@ export default function AdminUsersPage() {
                     <td className="px-3 py-3">{user.last_name || names.lastName || '—'}</td>
                     <td className="px-3 py-3 font-medium text-slate-900">{user.display_name || '—'}</td>
                     <td className="px-3 py-3">{user.email}</td>
-                    <td className="px-3 py-3">{user.role}</td>
-                    <td className="px-3 py-3">{user.status}</td>
+                    <td className="px-3 py-3"><RoleBadge>{user.role}</RoleBadge></td>
+                    <td className="px-3 py-3"><StatusBadge>{user.status}</StatusBadge></td>
                     <td className="px-3 py-3">{user.locale}</td>
                     <td className="px-3 py-3">{formatDate(user.created_at)}</td>
                     <td className="px-3 py-3">{formatDate(user.last_login_at)}</td>
                     <td className="px-3 py-3">
                       <div className="flex min-w-60 flex-wrap gap-2">
-                        <button className="rounded border border-slate-200 px-2 py-1 text-xs font-semibold hover:bg-slate-50" onClick={() => void refreshAfter(blockAdminUser(user.user_id), t('admin.userBlocked'))}>{t('admin.block')}</button>
+                        <button className="rounded border border-slate-200 px-2 py-1 text-xs font-semibold hover:bg-slate-50" onClick={() => confirmAdminAction({
+                          title: t('admin.block'),
+                          description: `Block ${user.display_name || user.email}? This user will not be able to access the platform.`,
+                          confirmLabel: t('admin.block'),
+                          destructive: true,
+                          run: () => void refreshAfter(blockAdminUser(user.user_id), t('admin.userBlocked'))
+                        })}>{t('admin.block')}</button>
                         <button className="rounded border border-slate-200 px-2 py-1 text-xs font-semibold hover:bg-slate-50" onClick={() => void refreshAfter(unblockAdminUser(user.user_id), t('admin.userUnblocked'))}>{t('admin.unblock')}</button>
                         <button className="rounded border border-slate-200 px-2 py-1 text-xs font-semibold hover:bg-slate-50" onClick={() => void refreshAfter(activateAdminUser(user.user_id), t('admin.userActivated'))}>{t('admin.activate')}</button>
-                        <button className="rounded border border-slate-200 px-2 py-1 text-xs font-semibold hover:bg-slate-50" onClick={() => void refreshAfter(deactivateAdminUser(user.user_id), t('admin.userDeactivated'))}>{t('admin.deactivate')}</button>
-                        <button className="rounded border border-amber-200 px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50" onClick={() => void handleResetPassword(user.user_id)}>{t('admin.resetPassword')}</button>
-                        <button className="rounded border border-brand-200 px-2 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50" onClick={() => void handleRegenerateActivation(user.user_id)}>{t('admin.regenerateActivation')}</button>
+                        <button className="rounded border border-slate-200 px-2 py-1 text-xs font-semibold hover:bg-slate-50" onClick={() => confirmAdminAction({
+                          title: t('admin.deactivate'),
+                          description: `Deactivate ${user.display_name || user.email}? This account will be marked inactive.`,
+                          confirmLabel: t('admin.deactivate'),
+                          destructive: true,
+                          run: () => void refreshAfter(deactivateAdminUser(user.user_id), t('admin.userDeactivated'))
+                        })}>{t('admin.deactivate')}</button>
+                        <button className="rounded border border-amber-200 px-2 py-1 text-xs font-semibold text-amber-700 hover:bg-amber-50" onClick={() => confirmAdminAction({
+                          title: t('admin.resetPassword'),
+                          description: `Generate a password reset token for ${user.display_name || user.email}?`,
+                          confirmLabel: t('admin.resetPassword'),
+                          run: () => void handleResetPassword(user.user_id)
+                        })}>{t('admin.resetPassword')}</button>
+                        <button className="rounded border border-brand-200 px-2 py-1 text-xs font-semibold text-brand-700 hover:bg-brand-50" onClick={() => confirmAdminAction({
+                          title: t('admin.regenerateActivation'),
+                          description: `Regenerate the activation token for ${user.display_name || user.email}?`,
+                          confirmLabel: t('admin.regenerateActivation'),
+                          run: () => void handleRegenerateActivation(user.user_id)
+                        })}>{t('admin.regenerateActivation')}</button>
                       </div>
                     </td>
                   </tr>
@@ -324,7 +365,21 @@ export default function AdminUsersPage() {
             <button className="rounded-lg border border-slate-200 px-3 py-2 font-semibold disabled:opacity-50" disabled={!canGoForward} onClick={() => setOffset(value => value + PAGE_SIZE)}>{t('admin.next')}</button>
           </div>
         </div>
-      </section>
-    </div>
+      </SectionCard>
+      <ConfirmationDialog
+        open={pendingAction !== null}
+        title={pendingAction?.title ?? ''}
+        description={pendingAction?.description}
+        confirmLabel={pendingAction?.confirmLabel ?? t('admin.actions')}
+        cancelLabel="Cancel"
+        destructive={pendingAction?.destructive}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={() => {
+          const action = pendingAction
+          setPendingAction(null)
+          action?.run()
+        }}
+      />
+    </PageContainer>
   )
 }

@@ -7,6 +7,17 @@ import {
   type AgentSettingVersion
 } from '../lib/agentSettingsApi'
 import { useLanguage } from '../i18n/LanguageProvider'
+import {
+  EmptyState,
+  ErrorAlert,
+  InfoAlert,
+  LoadingState,
+  PageHeader,
+  RoleBadge,
+  SectionCard,
+  StatusBadge,
+  SuccessAlert
+} from '../components/design-system'
 
 function formatDate(value?: string | null) {
   if (!value) return '-'
@@ -119,20 +130,14 @@ export default function AgentSettingsPage() {
   return (
     <div className="mx-auto grid w-full max-w-7xl gap-5 xl:grid-cols-[1.1fr_0.9fr]">
       <section className="space-y-5">
-        <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('nav.administration')}</div>
-              <h2 className="mt-1 text-2xl font-extrabold text-agent-primary">{t('agentSettings.title')}</h2>
-              <p className="mt-2 max-w-2xl text-sm text-slate-600">{t('agentSettings.description')}</p>
-            </div>
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold uppercase text-amber-700">
-              {t('agentSettings.observationalOnly')}
-            </div>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow={t('nav.administration')}
+          title={t('agentSettings.title')}
+          description={t('agentSettings.description')}
+          actions={<InfoAlert className="border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold uppercase text-amber-700">{t('agentSettings.observationalOnly')}</InfoAlert>}
+        />
 
-        <div className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
+        <SectionCard>
           <div className="grid gap-3 lg:grid-cols-[1fr_220px]">
             <input
               className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
@@ -149,11 +154,11 @@ export default function AgentSettingsPage() {
               {categories.map(item => <option key={item} value={item}>{item}</option>)}
             </select>
           </div>
-        </div>
+        </SectionCard>
 
-        <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-card">
-          {loading && <div className="p-5 text-sm text-slate-500">{t('agentSettings.loading')}</div>}
-          {!loading && filteredSettings.length === 0 && <div className="p-5 text-sm text-slate-500">{t('agentSettings.empty')}</div>}
+        <SectionCard className="overflow-hidden" padded={false}>
+          {loading && <LoadingState title={t('agentSettings.loading')} message={t('agentSettings.loading')} />}
+          {!loading && filteredSettings.length === 0 && <EmptyState title={t('agentSettings.empty')} message={t('agentSettings.empty')} />}
           <div className="divide-y divide-slate-100">
             {filteredSettings.map(setting => (
               <button
@@ -165,9 +170,9 @@ export default function AgentSettingsPage() {
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold uppercase text-slate-600">{setting.category}</span>
-                      <span className={`rounded-full px-2 py-1 text-xs font-bold ${setting.status === 'PLATFORM' ? 'bg-brand-100 text-brand-700' : 'bg-amber-100 text-amber-700'}`}>{setting.status}</span>
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">v{setting.version}</span>
+                      <RoleBadge tone="slate">{setting.category}</RoleBadge>
+                      <StatusBadge tone={setting.status === 'PLATFORM' ? 'brand' : 'amber'}>{setting.status}</StatusBadge>
+                      <StatusBadge>v{setting.version}</StatusBadge>
                     </div>
                     <div className="mt-2 font-mono text-sm font-semibold text-agent-primary">{setting.setting_key}</div>
                     <p className="mt-1 text-sm text-slate-600">{setting.description}</p>
@@ -180,17 +185,17 @@ export default function AgentSettingsPage() {
               </button>
             ))}
           </div>
-        </div>
+        </SectionCard>
       </section>
 
       <aside className="space-y-5">
-        <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
+        <SectionCard>
           {!selected && <div className="text-sm text-slate-500">{t('agentSettings.selectSetting')}</div>}
           {selected && (
             <>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold uppercase text-slate-600">{selected.category}</span>
-                <span className="rounded-full bg-amber-50 px-2 py-1 text-xs font-bold uppercase text-amber-700">{t('agentSettings.noRuntimeEffect')}</span>
+                <RoleBadge tone="slate">{selected.category}</RoleBadge>
+                <StatusBadge tone="amber">{t('agentSettings.noRuntimeEffect')}</StatusBadge>
               </div>
               <h3 className="mt-3 break-all font-mono text-lg font-extrabold text-agent-primary">{selected.setting_key}</h3>
               <p className="mt-2 text-sm text-slate-600">{selected.description}</p>
@@ -234,14 +239,14 @@ export default function AgentSettingsPage() {
                 </button>
               </form>
 
-              {message && <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{message}</div>}
-              {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
+              {message && <SuccessAlert className="mt-4">{message}</SuccessAlert>}
+              {error && <ErrorAlert className="mt-4">{error}</ErrorAlert>}
             </>
           )}
-        </section>
+        </SectionCard>
 
         {selected && (
-          <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
+          <SectionCard>
             <h3 className="text-lg font-extrabold text-agent-primary">{t('agentSettings.versionHistory')}</h3>
             <div className="mt-3 space-y-3">
               {versions.length === 0 && <div className="text-sm text-slate-500">{t('agentSettings.noVersions')}</div>}
@@ -256,7 +261,7 @@ export default function AgentSettingsPage() {
                 </div>
               ))}
             </div>
-          </section>
+          </SectionCard>
         )}
       </aside>
     </div>

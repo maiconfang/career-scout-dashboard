@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import PageState from '../components/PageState'
+import {
+  ErrorState,
+  InfoAlert,
+  InfoCard,
+  LoadingState,
+  PageContainer,
+  SectionCard,
+  StatCard,
+  StatusBadge
+} from '../components/design-system'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageProvider'
 import {
@@ -50,39 +59,17 @@ function readable(value: string | null | undefined) {
   return value.toLowerCase().replaceAll('_', ' ').replace(/^\w/, letter => letter.toUpperCase())
 }
 
-function statusTone(status: string) {
-  if (status === 'COMPLETED') return 'bg-emerald-50 text-emerald-700 ring-emerald-100'
-  if (status === 'FAILED') return 'bg-red-50 text-red-700 ring-red-100'
-  return 'bg-blue-50 text-blue-700 ring-blue-100'
+function statusTone(status: string): 'emerald' | 'red' | 'blue' {
+  if (status === 'COMPLETED') return 'emerald'
+  if (status === 'FAILED') return 'red'
+  return 'blue'
 }
 
-function decisionTone(decision: string | null | undefined) {
-  if (decision === 'APPLY') return 'bg-emerald-50 text-emerald-700'
-  if (decision === 'CONSIDER') return 'bg-amber-50 text-amber-700'
-  if (decision === 'DO_NOT_APPLY') return 'bg-red-50 text-red-700'
-  return 'bg-slate-100 text-slate-600'
-}
-
-function KpiCard({ label, value, subtitle, tone = 'slate' }: {
-  label: string
-  value: string | number
-  subtitle?: string
-  tone?: 'slate' | 'emerald' | 'amber' | 'blue' | 'violet'
-}) {
-  const tones = {
-    slate: 'border-slate-100 bg-white text-slate-950',
-    emerald: 'border-emerald-100 bg-emerald-50 text-emerald-700',
-    amber: 'border-amber-100 bg-amber-50 text-amber-700',
-    blue: 'border-blue-100 bg-blue-50 text-blue-700',
-    violet: 'border-violet-100 bg-violet-50 text-violet-700'
-  }
-  return (
-    <article className={`rounded-2xl border p-5 shadow-sm ${tones[tone]}`}>
-      <div className="text-[11px] font-bold uppercase tracking-[0.16em] opacity-60">{label}</div>
-      <div className="mt-2 text-3xl font-black tracking-tight tabular-nums">{value}</div>
-      {subtitle && <div className="mt-1 text-xs font-medium opacity-60">{subtitle}</div>}
-    </article>
-  )
+function decisionTone(decision: string | null | undefined): 'emerald' | 'amber' | 'red' | 'slate' {
+  if (decision === 'APPLY') return 'emerald'
+  if (decision === 'CONSIDER') return 'amber'
+  if (decision === 'DO_NOT_APPLY') return 'red'
+  return 'slate'
 }
 
 function HealthItem({ label, healthy, detail }: { label: string, healthy: boolean, detail?: string }) {
@@ -175,11 +162,11 @@ export default function DashboardHome() {
   }, [data])
 
   if (loading) {
-    return <PageState title={t('home.loading')} message={t('home.loadingDescription')} />
+    return <LoadingState title={t('home.loading')} message={t('home.loadingDescription')} />
   }
 
   if (!data) {
-    return <PageState title={t('home.errorTitle')} message={error ?? t('home.errorDescription')} action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>{t('home.tryAgain')}</button>} />
+    return <ErrorState title={t('home.errorTitle')} message={error ?? t('home.errorDescription')} action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>{t('home.tryAgain')}</button>} />
   }
 
   const latestExecution = data.executions[0]
@@ -199,14 +186,14 @@ export default function DashboardHome() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-6">
+    <PageContainer>
       {error && (
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm font-medium text-amber-800">
+        <InfoAlert className="border-amber-200 bg-amber-50 px-5 py-4 font-medium text-amber-800">
           {error}
-        </div>
+        </InfoAlert>
       )}
 
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-card">
+      <SectionCard className="overflow-hidden rounded-3xl border-slate-200" padded={false}>
         <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-brand-700 px-6 py-7 text-white">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -228,28 +215,25 @@ export default function DashboardHome() {
             </div>
           </div>
         </div>
-      </section>
+      </SectionCard>
 
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Campaigns" value={formatNumber(metrics.campaigns)} />
-        <KpiCard label="Executions" value={formatNumber(metrics.executions)} tone="blue" />
-        <KpiCard label="Recommendations" value={formatNumber(metrics.recommendations)} tone="violet" />
-        <KpiCard label="APPLY" value={formatNumber(metrics.applyCount)} tone="emerald" />
-        <KpiCard label="Average Match" value={formatMatch(metrics.averageMatch)} subtitle="Recent recommendations" />
-        <KpiCard label="Active Resume" value={defaultResume ? '1' : '0'} subtitle={defaultResume?.display_name ?? 'No active resume'} tone={defaultResume ? 'emerald' : 'amber'} />
-        <KpiCard label="LinkedIn Accounts" value={formatNumber(data.linkedInAccounts.filter(account => account.active).length)} subtitle={defaultLinkedIn?.display_name ?? 'No account connected'} />
-        <KpiCard label="Candidate Profiles" value={profile?.profile_id ? '1' : '0'} subtitle={profile?.desired_occupation || profile?.current_occupation || 'Profile not configured'} tone={profile?.profile_id ? 'emerald' : 'amber'} />
+        <StatCard label="Campaigns" value={formatNumber(metrics.campaigns)} />
+        <StatCard label="Executions" value={formatNumber(metrics.executions)} tone="blue" />
+        <StatCard label="Recommendations" value={formatNumber(metrics.recommendations)} tone="violet" />
+        <StatCard label="APPLY" value={formatNumber(metrics.applyCount)} tone="emerald" />
+        <StatCard label="Average Match" value={formatMatch(metrics.averageMatch)} subtitle="Recent recommendations" />
+        <StatCard label="Active Resume" value={defaultResume ? '1' : '0'} subtitle={defaultResume?.display_name ?? 'No active resume'} tone={defaultResume ? 'emerald' : 'amber'} />
+        <StatCard label="LinkedIn Accounts" value={formatNumber(data.linkedInAccounts.filter(account => account.active).length)} subtitle={defaultLinkedIn?.display_name ?? 'No account connected'} />
+        <StatCard label="Candidate Profiles" value={profile?.profile_id ? '1' : '0'} subtitle={profile?.desired_occupation || profile?.current_occupation || 'Profile not configured'} tone={profile?.profile_id ? 'emerald' : 'amber'} />
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1fr_1.2fr]">
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-500">{t('home.currentProfile')}</div>
-              <h3 className="mt-1 text-xl font-extrabold text-slate-950">{profile?.desired_occupation || profile?.current_occupation || t('home.profileNotConfigured')}</h3>
-            </div>
-            <Link className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50" to="/career/candidate-profile">{t('home.manage')}</Link>
-          </div>
+        <InfoCard
+          label={t('home.currentProfile')}
+          title={profile?.desired_occupation || profile?.current_occupation || t('home.profileNotConfigured')}
+          actions={<Link className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50" to="/career/candidate-profile">{t('home.manage')}</Link>}
+        >
           <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
             <ProfileField label={t('home.occupation')} value={profile?.desired_occupation || profile?.current_occupation} />
             <ProfileField label={t('home.careerLevel')} value={profile?.career_level} />
@@ -263,15 +247,9 @@ export default function DashboardHome() {
               <span className="font-bold text-slate-800">{t('home.defaultCampaignProfile')}:</span> {activeCampaignProfile.name}
             </div>
           )}
-        </article>
+        </InfoCard>
 
-        <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-card">
-          <div className="mb-4 flex items-center justify-between">
-            <div>
-              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-500">{t('home.agentHealth')}</div>
-              <h3 className="mt-1 text-xl font-extrabold text-slate-950">{t('home.operationalReadiness')}</h3>
-            </div>
-          </div>
+        <InfoCard label={t('home.agentHealth')} title={t('home.operationalReadiness')}>
           <div className="grid gap-3 md:grid-cols-2">
             <HealthItem label="Database" healthy={agentHealth.database} />
             <HealthItem label="Schema" healthy={agentHealth.schema} />
@@ -281,11 +259,11 @@ export default function DashboardHome() {
             <HealthItem label="Planner" healthy={agentHealth.planner} />
             <HealthItem label="Discovery" healthy={agentHealth.discovery} />
           </div>
-        </article>
+        </InfoCard>
       </section>
 
       <section className="grid gap-5 xl:grid-cols-2">
-        <article className="rounded-2xl border border-slate-200 bg-white shadow-card">
+        <SectionCard className="rounded-2xl border-slate-200" padded={false}>
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div>
               <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-500">{t('home.recentExecutions')}</div>
@@ -304,7 +282,7 @@ export default function DashboardHome() {
                       <div className="font-bold text-slate-950">{execution.campaign}</div>
                       <div className="mt-1 font-mono text-xs text-slate-500">{execution.execution_id.slice(0, 8)} · {formatDateTime(execution.started_at)}</div>
                     </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${statusTone(execution.status)}`}>{readable(execution.status)}</span>
+                    <StatusBadge tone={statusTone(execution.status)}>{readable(execution.status)}</StatusBadge>
                   </div>
                   <div className="mt-3 grid grid-cols-4 gap-2 text-center text-xs">
                     <MiniMetric label="Collected" value={execution.jobs_collected} />
@@ -316,9 +294,9 @@ export default function DashboardHome() {
               ))}
             </div>
           )}
-        </article>
+        </SectionCard>
 
-        <article className="rounded-2xl border border-slate-200 bg-white shadow-card">
+        <SectionCard className="rounded-2xl border-slate-200" padded={false}>
           <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <div>
               <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-brand-500">{t('home.recentRecommendations')}</div>
@@ -337,7 +315,7 @@ export default function DashboardHome() {
                       <div className="font-bold text-slate-950">{opportunity.title}</div>
                       <div className="mt-1 text-sm text-slate-600">{opportunity.company || 'Company not provided'}</div>
                     </div>
-                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${decisionTone(opportunity.recommendation_decision)}`}>{readable(opportunity.recommendation_decision)}</span>
+                    <StatusBadge tone={decisionTone(opportunity.recommendation_decision)}>{readable(opportunity.recommendation_decision)}</StatusBadge>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-500">
                     <span className="rounded-md bg-slate-100 px-2 py-1">{formatMatch(opportunity.match_score)} match</span>
@@ -348,9 +326,9 @@ export default function DashboardHome() {
               ))}
             </div>
           )}
-        </article>
+        </SectionCard>
       </section>
-    </div>
+    </PageContainer>
   )
 }
 

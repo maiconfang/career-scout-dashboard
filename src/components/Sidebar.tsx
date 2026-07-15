@@ -18,7 +18,8 @@ export default function Sidebar() {
       </div>
 
       <nav className="space-y-2">
-        <NavLink to="/" end className={navClass}>{t('nav.home')}</NavLink>
+        <NavLink to="/workspace" className={navClass}>{t('nav.workspace')}</NavLink>
+        <NavLink to="/home" className={navClass}>{t('nav.home')}</NavLink>
         <NavLink to="/inbox" className={navClass}>{t('nav.opportunityInbox')}</NavLink>
         <NavLink to="/campaigns" className={navClass}>{t('nav.campaignHistory')}</NavLink>
         <NavLink to={'/repository'} className={navClass}>{t('nav.opportunityRepository')}</NavLink>
@@ -30,7 +31,20 @@ export default function Sidebar() {
           {t('nav.agent')}
         </div>
         <nav className="space-y-2">
+          <NavLink to="/agent/run-campaign" className={navClass}>{t('nav.runCampaignWizard')}</NavLink>
           <NavLink to="/agent/executions" className={navClass}>{t('nav.agentExecutions')}</NavLink>
+          <NavLink to="/agent/campaign-inspector" className={navClass}>{t('nav.campaignInspector')}</NavLink>
+          <NavLink to="/agent/campaign-comparison" className={navClass}>{t('nav.campaignComparison')}</NavLink>
+        </nav>
+      </div>
+
+      <div className="mt-6 border-t border-slate-100 pt-4">
+        <div className="mb-2 px-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          {t('nav.analytics')}
+        </div>
+        <nav className="space-y-2">
+          <NavLink to="/analytics/career" className={navClass}>{t('nav.careerAnalytics')}</NavLink>
+          <NavLink to="/analytics/intelligence" className={navClass}>{t('nav.careerIntelligence')}</NavLink>
         </nav>
       </div>
 
@@ -41,6 +55,7 @@ export default function Sidebar() {
         <nav className="space-y-2">
           <NavLink to="/career/candidate-profile" className={navClass}>{t('nav.candidateProfile')}</NavLink>
           <NavLink to="/career/resumes" className={navClass}>{t('nav.resumes')}</NavLink>
+          <NavLink to="/career/resume-optimization" className={navClass}>{t('nav.resumeOptimization')}</NavLink>
           <NavLink to="/career/linkedin-accounts" className={navClass}>{t('nav.linkedinAccounts')}</NavLink>
           <NavLink to="/career/campaign-profiles" className={navClass}>{t('nav.campaignProfiles')}</NavLink>
         </nav>
@@ -52,8 +67,10 @@ export default function Sidebar() {
             {t('nav.administration')}
           </div>
           <nav className="space-y-2">
+            <NavLink to="/admin" end className={navClass}>{t('nav.administrationCenter')}</NavLink>
             <NavLink to="/admin/users" className={navClass}>{t('nav.adminUsers')}</NavLink>
             <NavLink to="/admin/agent-settings" className={navClass}>{t('nav.agentSettings')}</NavLink>
+            <NavLink to="/admin/platform-health" className={navClass}>{t('nav.platformHealth')}</NavLink>
           </nav>
         </div>
       )}

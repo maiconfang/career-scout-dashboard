@@ -1,4 +1,4 @@
-import { refreshSession } from './authApi'
+import { apiUrl, get, patch } from './httpClient'
 
 export type PlatformHealth = {
   status: 'ok'
@@ -131,6 +131,20 @@ export type OpportunityHistory = {
   feedback: OpportunityFeedback[]
 }
 
+export type OpportunityExplainability = {
+  opportunity_id: number
+  confidence: string
+  recommendation_reason: string
+  matched_skills: string[]
+  missing_skills: string[]
+  ranking_position: number | null
+  match_score: number | null
+  planner_goal: string
+  search_policy_summary: Record<string, unknown>
+  decision_reason: string
+  recommendation_summary: Record<string, unknown>
+}
+
 export type CampaignMetrics = {
   execution_status?: string
   total_appearances?: number
@@ -259,6 +273,7 @@ export type AgentExecutionRecommendedOpportunity = {
   opportunity_id: number
   title: string
   company: string
+  location?: string | null
   match_score: number | null
   ranking_position: number | null
   recommendation_decision: string | null
@@ -293,6 +308,81 @@ export type AgentExecutionQuery = {
   offset?: number
 }
 
+export type CampaignResultOpportunity = {
+  opportunity_id: number
+  title: string
+  company: string
+  location: string
+  source: string
+  url: string
+  collected_at: string
+  match_score: number | null
+  ranking_score: number | null
+  decision: string | null
+  recommendation: string | null
+  recommendation_reason: string | null
+  status: string
+}
+
+export type CampaignExecutionResults = {
+  summary: {
+    execution_id: string
+    campaign_profile: Record<string, unknown>
+    started_at: string
+    finished_at: string | null
+    duration: number
+    execution_status: string
+  }
+  discovery: {
+    raw_jobs_found: number
+    unique_jobs_found: number
+    discarded_jobs: number
+    discovery_duration: number | null
+  }
+  match: {
+    jobs_processed: number
+    average_match_score: number | null
+    highest_match_score: number | null
+    lowest_match_score: number | null
+  }
+  ranking: {
+    jobs_ranked: number
+    top_score: number | null
+    average_score: number | null
+    lowest_score: number | null
+  }
+  decision: {
+    apply_count: number
+    defer_count: number
+    do_not_apply_count: number
+  }
+  recommendation: {
+    recommendations_generated: number
+    apply_recommendations: number
+    defer_recommendations: number
+    rejected_recommendations: number
+  }
+  opportunities: {
+    items: CampaignResultOpportunity[]
+    limit: number
+    offset: number
+    returned: number
+    total: number
+  }
+}
+
+export type CampaignExecutionResultsQuery = {
+  decision?: string
+  recommendation?: string
+  company?: string
+  source?: string
+  minimum_match_score?: number
+  sort_by?: 'ranking_score' | 'match_score' | 'company' | 'collected_at'
+  order?: 'asc' | 'desc'
+  limit?: number
+  offset?: number
+}
+
 export type SearchAuditQuery = {
   search_family?: string
   campaign_id?: string
@@ -302,49 +392,121 @@ export type SearchAuditQuery = {
   offset?: number
 }
 
-const configuredBaseUrl = (import.meta.env.VITE_CAREER_SCOUT_API_URL as string | undefined)?.trim()
-const apiBaseUrl = configuredBaseUrl?.replace(/\/$/, '') ?? ''
+export type CareerFeedbackOverview = Record<string, unknown>
+export type CareerFeedbackCompany = Record<string, unknown>
+export type CareerFeedbackSource = Record<string, unknown>
+export type CareerFeedbackCampaign = Record<string, unknown>
+export type CareerFeedbackExecution = Record<string, unknown>
+export type CandidateIntelligence = Record<string, unknown>
 
-function apiUrl(path: string, query?: Record<string, string | number | undefined>) {
-  const url = new URL(`${apiBaseUrl}${path}`, window.location.origin)
-
-  Object.entries(query ?? {}).forEach(([key, value]) => {
-    if (value !== undefined && value !== '') url.searchParams.set(key, String(value))
-  })
-
-  return url.toString()
+export type ResumeSkillOptimization = {
+  skill: string
+  present: boolean
+  market_count: number
+  missing_count: number
+  market_frequency: number
+  priority_score: number
 }
 
-async function get<T>(path: string, query?: Record<string, string | number | undefined>): Promise<T> {
-  let response = await fetch(apiUrl(path, query), {
-    headers: { Accept: 'application/json' },
-    credentials: 'include'
-  })
+export type ResumeOptimization = {
+  owner_user_id: string
+  resume_id: string | null
+  current_resume_coverage: number
+  top_skills_already_present: ResumeSkillOptimization[]
+  most_frequent_missing_skills: ResumeSkillOptimization[]
+  estimated_coverage_improvement: number
+  skills_priority: ResumeSkillOptimization[]
+  market_frequency: ResumeSkillOptimization[]
+  resume_completeness_score: number
+}
 
-  if (response.status === 401) {
-    try {
-      await refreshSession()
-      response = await fetch(apiUrl(path, query), {
-        headers: { Accept: 'application/json' },
-        credentials: 'include'
-      })
-    } catch {
-      window.dispatchEvent(new Event('career-scout-auth-expired'))
-    }
-  }
+export type NotificationType =
+  | 'CAMPAIGN_COMPLETED'
+  | 'CAMPAIGN_FAILED'
+  | 'REPLAY_COMPLETED'
+  | 'REPLAY_FAILED'
+  | 'SCHEDULER_EXECUTED'
+  | 'SCHEDULER_FAILED'
 
-  if (!response.ok) {
-    const message = response.status === 404
-      ? 'The requested Career Scout data was not found.'
-      : `Career Scout API request failed (${response.status}).`
-    throw new Error(message)
-  }
+export type NotificationSeverity = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR'
 
-  return response.json() as Promise<T>
+export type PlatformNotification = {
+  id: string
+  owner_user_id: string
+  type: NotificationType
+  title: string
+  message: string
+  severity: NotificationSeverity
+  is_read: boolean
+  related_execution_id: string | null
+  related_campaign_id: string | null
+  created_at: string
+  read_at: string | null
+}
+
+export type AuditLogRecord = {
+  id: string
+  owner_user_id: string | null
+  actor_user_id: string | null
+  action: string
+  resource_type: string
+  resource_id: string
+  description: string
+  metadata: Record<string, unknown>
+  ip_address: string
+  user_agent: string
+  created_at: string
+}
+
+export type AuditLogQuery = {
+  action?: string
+  resource_type?: string
+  user_id?: string
+  date_from?: string
+  date_to?: string
+  limit?: number
+  offset?: number
+}
+
+export type CampaignSchedule = {
+  scheduler_id: string
+  owner_user_id: string
+  campaign_profile_id: string
+  enabled: boolean
+  schedule_type: 'MANUAL' | 'DAILY' | 'WEEKLY'
+  timezone: string
+  next_execution: string | null
+  last_execution: string | null
+  created_at: string
+  updated_at: string
 }
 
 export function platformHealth() {
   return get<PlatformHealth>('/health')
+}
+
+export function listNotifications(query: { unread_only?: boolean; limit?: number; offset?: number } = {}) {
+  return get<PlatformNotification[]>('/api/notifications', {
+    unread_only: query.unread_only ? 'true' : undefined,
+    limit: query.limit,
+    offset: query.offset
+  })
+}
+
+export function markNotificationRead(notificationId: string) {
+  return patch<PlatformNotification>(`/api/notifications/${notificationId}/read`)
+}
+
+export function markAllNotificationsRead() {
+  return patch<PlatformNotification[]>('/api/notifications/read-all')
+}
+
+export function listAuditLog(query: AuditLogQuery = {}) {
+  return get<AuditLogRecord[]>('/api/audit-log', query)
+}
+
+export function listCampaignSchedules() {
+  return get<CampaignSchedule[]>('/api/scheduler')
 }
 
 export function listOpportunities(query: OpportunityQuery = {}) {
@@ -363,6 +525,10 @@ export function getAgentExecution(executionId: string) {
   return get<AgentExecutionDetail>(`/api/agent/executions/${executionId}`)
 }
 
+export function getAgentExecutionResults(executionId: string, query: CampaignExecutionResultsQuery = {}) {
+  return get<CampaignExecutionResults>(`/api/agent/executions/${executionId}/results`, query)
+}
+
 export function agentExecutionDownloadUrl(executionId: string, artifact: 'final-report' | 'log') {
   return apiUrl(`/api/agent/executions/${executionId}/downloads/${artifact}`)
 }
@@ -371,12 +537,44 @@ export function listSearchAudits(query: SearchAuditQuery = {}) {
   return get<PaginatedResponse<SearchAudit>>('/api/search-audit', query)
 }
 
+export function getCareerFeedbackAnalytics() {
+  return get<CareerFeedbackOverview>('/api/analytics/feedback')
+}
+
+export function listCareerFeedbackCompanies() {
+  return get<CareerFeedbackCompany[] | PaginatedResponse<CareerFeedbackCompany> | Record<string, unknown>>('/api/analytics/feedback/companies')
+}
+
+export function listCareerFeedbackSources() {
+  return get<CareerFeedbackSource[] | PaginatedResponse<CareerFeedbackSource> | Record<string, unknown>>('/api/analytics/feedback/sources')
+}
+
+export function listCareerFeedbackCampaigns() {
+  return get<CareerFeedbackCampaign[] | PaginatedResponse<CareerFeedbackCampaign> | Record<string, unknown>>('/api/analytics/feedback/campaigns')
+}
+
+export function listCareerFeedbackExecutions() {
+  return get<CareerFeedbackExecution[] | PaginatedResponse<CareerFeedbackExecution> | Record<string, unknown>>('/api/analytics/feedback/executions')
+}
+
+export function getCandidateIntelligence() {
+  return get<CandidateIntelligence>('/api/intelligence/candidate')
+}
+
+export function getResumeOptimization() {
+  return get<ResumeOptimization>('/api/intelligence/resume-optimization')
+}
+
 export function getOpportunity(opportunityId: number) {
   return get<Opportunity>(`/api/opportunities/${opportunityId}`)
 }
 
 export function getOpportunityHistory(opportunityId: number) {
   return get<OpportunityHistory>(`/api/opportunities/${opportunityId}/history`)
+}
+
+export function getOpportunityExplainability(opportunityId: number) {
+  return get<OpportunityExplainability>(`/api/opportunities/${opportunityId}/explain`)
 }
 
 export function listCampaigns(limit = 25, offset = 0) {

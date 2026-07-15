@@ -1,4 +1,4 @@
-import { csrfToken } from './authApi'
+import { apiRequest } from './httpClient'
 
 export type CampaignProfile = {
   campaign_profile_id: string
@@ -34,37 +34,12 @@ export type CampaignProfilePayload = {
   make_default: boolean
 }
 
-const configuredBaseUrl = (import.meta.env.VITE_CAREER_SCOUT_API_URL as string | undefined)?.trim()
-const apiBaseUrl = configuredBaseUrl?.replace(/\/$/, '') ?? ''
-
-function apiUrl(path: string) {
-  return new URL(`${apiBaseUrl}${path}`, window.location.origin).toString()
-}
-
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers)
-  headers.set('Accept', 'application/json')
-
-  if (options.body && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json')
-  }
-
-  const csrf = csrfToken()
-  if (csrf && (options.method ?? 'GET').toUpperCase() !== 'GET') {
-    headers.set('X-CSRF-Token', decodeURIComponent(csrf))
-  }
-
-  const response = await fetch(apiUrl(path), {
+  return apiRequest<T>(path, {
     ...options,
-    headers,
-    credentials: 'include'
+    errorPrefix: 'Campaign Profile request failed',
+    notFoundMessage: 'Campaign Profile request failed (404).'
   })
-
-  if (!response.ok) {
-    throw new Error(`Campaign Profile request failed (${response.status}).`)
-  }
-
-  return response.json() as Promise<T>
 }
 
 export function listCampaignProfiles(includeArchived = false) {

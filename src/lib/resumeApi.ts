@@ -1,4 +1,4 @@
-import { csrfToken } from './authApi'
+import { apiRequest, apiUrl } from './httpClient'
 
 export type CandidateResume = {
   resume_id: string
@@ -16,33 +16,12 @@ export type CandidateResume = {
   updated_at: string | null
 }
 
-const configuredBaseUrl = (import.meta.env.VITE_CAREER_SCOUT_API_URL as string | undefined)?.trim()
-const apiBaseUrl = configuredBaseUrl?.replace(/\/$/, '') ?? ''
-
-function apiUrl(path: string) {
-  return new URL(`${apiBaseUrl}${path}`, window.location.origin).toString()
-}
-
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const headers = new Headers(options.headers)
-  headers.set('Accept', 'application/json')
-
-  const csrf = csrfToken()
-  if (csrf && (options.method ?? 'GET').toUpperCase() !== 'GET') {
-    headers.set('X-CSRF-Token', decodeURIComponent(csrf))
-  }
-
-  const response = await fetch(apiUrl(path), {
+  return apiRequest<T>(path, {
     ...options,
-    headers,
-    credentials: 'include'
+    errorPrefix: 'Resume request failed',
+    notFoundMessage: 'Resume request failed (404).'
   })
-
-  if (!response.ok) {
-    throw new Error(`Resume request failed (${response.status}).`)
-  }
-
-  return response.json() as Promise<T>
 }
 
 export function listResumes(includeArchived = false) {

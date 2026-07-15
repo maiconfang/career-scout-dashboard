@@ -10,6 +10,18 @@ import { getCandidateProfile, type CandidateProfile } from '../lib/candidateProf
 import { listResumes, type CandidateResume } from '../lib/resumeApi'
 import { listLinkedInAccounts, type LinkedInAccount } from '../lib/linkedinAccountApi'
 import { useLanguage } from '../i18n/LanguageProvider'
+import { CampaignRunAction } from '../components/CampaignRunAction'
+import {
+  EmptyState,
+  ErrorAlert,
+  InfoAlert,
+  LoadingState,
+  PageContainer,
+  SectionCard,
+  StatusBadge,
+  SuccessAlert,
+  ConfirmationDialog
+} from '../components/design-system'
 
 function split(value: string) {
   return value
@@ -49,6 +61,7 @@ export default function CampaignProfilesPage() {
   const [makeDefault, setMakeDefault] = useState(true)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [profileToArchive, setProfileToArchive] = useState<CampaignProfile | null>(null)
 
   function load() {
     setLoading(true)
@@ -152,8 +165,8 @@ export default function CampaignProfilesPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5">
-      <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
+    <PageContainer className="space-y-5" size="lg">
+      <SectionCard>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('career.section')}</div>
@@ -171,9 +184,9 @@ export default function CampaignProfilesPage() {
             </div>
           </div>
         </div>
-      </section>
+      </SectionCard>
 
-      <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
+      <SectionCard>
         <form className="space-y-4" onSubmit={handleCreate}>
           <div className="grid gap-4 lg:grid-cols-2">
             <label className="block">
@@ -228,24 +241,24 @@ export default function CampaignProfilesPage() {
               {saving ? t('campaignProfiles.saving') : t('campaignProfiles.create')}
             </button>
           </div>
-          {!canCreate && !loading && <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">{t('campaignProfiles.missingReferences')}</div>}
+          {!canCreate && !loading && <InfoAlert className="border-amber-200 bg-amber-50 text-amber-700">{t('campaignProfiles.missingReferences')}</InfoAlert>}
         </form>
         <div className="mt-4 flex items-center gap-2">
           <input id="include-archived-campaign-profiles" checked={includeArchived} type="checkbox" onChange={event => setIncludeArchived(event.target.checked)} />
           <label className="text-sm font-medium text-slate-600" htmlFor="include-archived-campaign-profiles">{t('campaignProfiles.includeArchived')}</label>
         </div>
-        {message && <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{message}</div>}
-        {error && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">{error}</div>}
-      </section>
+        {message && <SuccessAlert className="mt-4">{message}</SuccessAlert>}
+        {error && <ErrorAlert className="mt-4">{error}</ErrorAlert>}
+      </SectionCard>
 
-      <section className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-card">
+      <SectionCard className="overflow-hidden" padded={false}>
         <div className="border-b border-slate-100 px-5 py-4">
           <h3 className="text-lg font-extrabold text-agent-primary">{t('campaignProfiles.library')}</h3>
           <p className="text-sm text-slate-500">{t('campaignProfiles.libraryDescription')}</p>
         </div>
 
-        {loading && <div className="p-5 text-sm text-slate-500">{t('campaignProfiles.loading')}</div>}
-        {!loading && profiles.length === 0 && <div className="p-5 text-sm text-slate-500">{t('campaignProfiles.empty')}</div>}
+        {loading && <LoadingState title={t('campaignProfiles.loading')} message={t('campaignProfiles.loading')} />}
+        {!loading && profiles.length === 0 && <EmptyState title={t('campaignProfiles.empty')} message={t('campaignProfiles.empty')} />}
 
         {!loading && profiles.length > 0 && (
           <div className="divide-y divide-slate-100">
@@ -254,8 +267,8 @@ export default function CampaignProfilesPage() {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h4 className="text-base font-extrabold text-agent-primary">{profile.name}</h4>
-                    <span className={`rounded-full px-2 py-1 text-xs font-bold ${profile.active ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>{profile.status}</span>
-                    {profile.default_profile && <span className="rounded-full bg-brand-50 px-2 py-1 text-xs font-bold text-brand-700">{t('campaignProfiles.default')}</span>}
+                    <StatusBadge tone={profile.active ? 'emerald' : 'slate'}>{profile.status}</StatusBadge>
+                    {profile.default_profile && <StatusBadge tone="brand">{t('campaignProfiles.default')}</StatusBadge>}
                   </div>
                   <div className="mt-1 text-sm text-slate-500">{profile.primary_search_intent || '-'}</div>
                   <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-500">
@@ -270,13 +283,20 @@ export default function CampaignProfilesPage() {
                   <div className="mt-1"><span className="font-semibold">{t('campaignProfiles.updatedAt')}:</span> {formatDate(profile.updated_at)}</div>
                 </div>
                 <div className="flex flex-wrap items-start gap-2 lg:justify-end">
+                  {profile.active && (
+                    <CampaignRunAction
+                      campaignProfileId={profile.campaign_profile_id}
+                      campaignProfileName={profile.name}
+                      className="rounded-lg bg-brand-500 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    />
+                  )}
                   {profile.active && !profile.default_profile && (
                     <button className="rounded-lg border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50" type="button" onClick={() => void handleDefault(profile.campaign_profile_id)}>
                       {t('campaignProfiles.setDefault')}
                     </button>
                   )}
                   {profile.active && (
-                    <button className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" type="button" onClick={() => void handleArchive(profile.campaign_profile_id)}>
+                    <button className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" type="button" onClick={() => setProfileToArchive(profile)}>
                       {t('campaignProfiles.archive')}
                     </button>
                   )}
@@ -285,7 +305,22 @@ export default function CampaignProfilesPage() {
             ))}
           </div>
         )}
-      </section>
-    </div>
+      </SectionCard>
+      <ConfirmationDialog
+        open={profileToArchive !== null}
+        title="Archive Campaign Profile"
+        description={profileToArchive ? `Archive "${profileToArchive.name}"? It will no longer be available as an active campaign profile.` : undefined}
+        confirmLabel={t('campaignProfiles.archive')}
+        cancelLabel="Cancel"
+        destructive
+        onCancel={() => setProfileToArchive(null)}
+        onConfirm={() => {
+          if (!profileToArchive) return
+          const campaignProfileId = profileToArchive.campaign_profile_id
+          setProfileToArchive(null)
+          void handleArchive(campaignProfileId)
+        }}
+      />
+    </PageContainer>
   )
 }

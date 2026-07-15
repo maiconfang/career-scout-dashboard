@@ -1,7 +1,17 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import OpportunityStatusBadge from '../components/OpportunityStatusBadge'
-import PageState from '../components/PageState'
+import {
+  EmptyState,
+  ErrorState,
+  FormSection,
+  InfoAlert,
+  LoadingState,
+  PageContainer,
+  SearchToolbar,
+  SectionCard,
+  StatusBadge
+} from '../components/design-system'
 import {
   listOpportunities,
   Opportunity,
@@ -30,10 +40,10 @@ function readable(value?: string | null) {
     .replace(/\b\w/g, character => character.toUpperCase())
 }
 
-function confidenceClass(confidence?: string | null) {
-  if (confidence === 'HIGH') return 'bg-emerald-50 text-emerald-700 border-emerald-200'
-  if (confidence === 'MEDIUM') return 'bg-amber-50 text-amber-700 border-amber-200'
-  return 'bg-slate-50 text-slate-600 border-slate-200'
+function confidenceTone(confidence?: string | null): 'emerald' | 'amber' | 'slate' {
+  if (confidence === 'HIGH') return 'emerald'
+  if (confidence === 'MEDIUM') return 'amber'
+  return 'slate'
 }
 
 export default function OpportunityInbox() {
@@ -116,7 +126,7 @@ export default function OpportunityInbox() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5">
+    <PageContainer className="space-y-5" size="lg">
       <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -127,8 +137,9 @@ export default function OpportunityInbox() {
           <div className="rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700">Recommended Set · one card per opportunity</div>
         </div>
 
-        <form className="mt-5 space-y-3 border-t border-slate-100 pt-4" onSubmit={submitSearch}>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <SearchToolbar className="mt-5 border-t border-slate-100 pt-4 shadow-none">
+          <form className="w-full space-y-3" onSubmit={submitSearch}>
+          <FormSection className="sm:grid-cols-2 lg:grid-cols-4">
             <input
               aria-label="Search opportunities"
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 lg:col-span-2"
@@ -164,18 +175,19 @@ export default function OpportunityInbox() {
             <select aria-label="Sort opportunities" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" onChange={event => { setOffset(0); setSort(event.target.value) }} value={sort}>
               <option value="match_score:desc">Match score · highest</option><option value="recommendation:desc">Recommendation · priority</option><option value="confidence:desc">Confidence · highest</option><option value="job_posted_at:desc">Job date · newest</option><option value="ranking_position:asc">Ranking position · first</option>
             </select>
-          </div>
+          </FormSection>
           <div className="flex justify-end gap-2">
             <button className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" onClick={resetFilters} type="button">Clear filters</button>
             <button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" type="submit">Search</button>
           </div>
-        </form>
+          </form>
+        </SearchToolbar>
       </section>
 
-      {loading && <PageState title="Loading opportunities" message="Fetching the latest Career Scout opportunities." />}
+      {loading && <LoadingState title="Loading opportunities" message="Fetching the latest Career Scout opportunities." />}
 
       {!loading && error && (
-        <PageState
+        <ErrorState
           title="Career Scout API is unavailable"
           message={error}
           action={(
@@ -187,7 +199,7 @@ export default function OpportunityInbox() {
       )}
 
       {!loading && !error && opportunities.length === 0 && (
-        <PageState title="No opportunities found" message="Try a different search or recommendation filter." />
+        <EmptyState title="No opportunities found" message="Try a different search or recommendation filter." />
       )}
 
       {!loading && !error && opportunities.length > 0 && (
@@ -201,15 +213,15 @@ export default function OpportunityInbox() {
             {opportunities.map(opportunity => {
               const details = recommendationDetails(opportunity)
               return (
-                <article key={opportunity.opportunity_id} className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
+                <SectionCard key={opportunity.opportunity_id}>
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <OpportunityStatusBadge status={opportunity.lifecycle_status} decision={details.decision} />
                         {details.confidence && (
-                          <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${confidenceClass(details.confidence)}`}>
+                          <StatusBadge tone={confidenceTone(details.confidence)} className="font-semibold">
                             {readable(details.confidence)} confidence
-                          </span>
+                          </StatusBadge>
                         )}
                         {details.matchScore !== null && (
                           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
@@ -257,7 +269,7 @@ export default function OpportunityInbox() {
                       )}
                     </div>
                   </div>
-                </article>
+                </SectionCard>
               )
             })}
           </div>
@@ -280,6 +292,6 @@ export default function OpportunityInbox() {
           </div>
         </>
       )}
-    </div>
+    </PageContainer>
   )
 }

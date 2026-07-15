@@ -1,5 +1,13 @@
 import { useEffect, useState } from 'react'
-import PageState from '../components/PageState'
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  PageContainer,
+  PageHeader,
+  SectionCard,
+  StatusBadge
+} from '../components/design-system'
 import { Campaign, listCampaigns } from '../lib/api'
 
 const PAGE_SIZE = 25
@@ -15,6 +23,12 @@ function formatDuration(seconds: number) {
 
 function campaignStatus(campaign: Campaign) {
   return campaign.metrics.execution_status ?? 'UNKNOWN'
+}
+
+function statusTone(status: string): 'emerald' | 'red' | 'slate' {
+  if (status === 'COMPLETED') return 'emerald'
+  if (status === 'FAILED') return 'red'
+  return 'slate'
 }
 
 export default function CampaignHistory() {
@@ -47,26 +61,26 @@ export default function CampaignHistory() {
   }, [offset, reloadKey])
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-5">
-      <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Campaign History</div>
-        <h2 className="mt-1 text-2xl font-extrabold text-agent-primary">Previous Career Scout campaigns</h2>
-        <p className="mt-2 text-sm text-slate-600">Review when each campaign ran and the opportunities it processed.</p>
-      </section>
+    <PageContainer className="space-y-5" size="lg">
+      <PageHeader
+        eyebrow="Campaign History"
+        title="Previous Career Scout campaigns"
+        description="Review when each campaign ran and the opportunities it processed."
+      />
 
-      {loading && <PageState title="Loading campaigns" message="Fetching previous Career Scout campaigns." />}
+      {loading && <LoadingState title="Loading campaigns" message="Fetching previous Career Scout campaigns." />}
       {!loading && error && (
-        <PageState
+        <ErrorState
           title="Campaign history is unavailable"
           message={error}
           action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>Try again</button>}
         />
       )}
-      {!loading && !error && campaigns.length === 0 && <PageState title="No campaigns found" message="Career Scout has not recorded a campaign yet." />}
+      {!loading && !error && campaigns.length === 0 && <EmptyState title="No campaigns found" message="Career Scout has not recorded a campaign yet." />}
 
       {!loading && !error && campaigns.length > 0 && (
         <>
-          <div className="overflow-hidden rounded-xl border border-slate-100 bg-white shadow-card">
+          <SectionCard className="overflow-hidden" padded={false}>
             <div className="hidden grid-cols-[1.4fr_0.7fr_repeat(4,0.6fr)_0.8fr] gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase text-slate-500 lg:grid">
               <div>Campaign</div><div>Status</div><div>Found</div><div>Ranked</div><div>Top 5</div><div>Apply</div><div>Duration</div>
             </div>
@@ -80,9 +94,9 @@ export default function CampaignHistory() {
                       <div className="mt-1 font-mono text-[11px] text-slate-400">{campaign.campaign_id.slice(0, 8)}</div>
                     </div>
                     <div>
-                      <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${status === 'COMPLETED' ? 'bg-accent-50 text-emerald-700' : status === 'FAILED' ? 'bg-red-50 text-red-700' : 'bg-slate-100 text-slate-600'}`}>
+                      <StatusBadge tone={statusTone(status)} className="font-semibold">
                         {status.toLowerCase().replace(/^./, value => value.toUpperCase())}
-                      </span>
+                      </StatusBadge>
                     </div>
                     <div><span className="text-xs text-slate-500 lg:hidden">Found: </span><span className="font-semibold text-slate-700">{campaign.jobs_collected}</span></div>
                     <div><span className="text-xs text-slate-500 lg:hidden">Ranked: </span><span className="font-semibold text-slate-700">{campaign.jobs_accepted}</span></div>
@@ -93,7 +107,7 @@ export default function CampaignHistory() {
                 )
               })}
             </div>
-          </div>
+          </SectionCard>
 
           <div className="flex items-center justify-between">
             <button className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40" disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - PAGE_SIZE))}>Previous</button>
@@ -102,6 +116,6 @@ export default function CampaignHistory() {
           </div>
         </>
       )}
-    </div>
+    </PageContainer>
   )
 }
