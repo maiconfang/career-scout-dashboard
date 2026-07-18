@@ -57,6 +57,7 @@ export default function Sidebar() {
           <NavLink to="/career/resumes" className={navClass}>{t('nav.resumes')}</NavLink>
           <NavLink to="/career/resume-optimization" className={navClass}>{t('nav.resumeOptimization')}</NavLink>
           <NavLink to="/career/linkedin-accounts" className={navClass}>{t('nav.linkedinAccounts')}</NavLink>
+          <NavLink to="/career/discovery-sources" className={navClass}>{t('nav.discoverySources')}</NavLink>
           <NavLink to="/career/campaign-profiles" className={navClass}>{t('nav.campaignProfiles')}</NavLink>
         </nav>
       </div>
@@ -69,6 +70,7 @@ export default function Sidebar() {
           <nav className="space-y-2">
             <NavLink to="/admin" end className={navClass}>{t('nav.administrationCenter')}</NavLink>
             <NavLink to="/admin/users" className={navClass}>{t('nav.adminUsers')}</NavLink>
+            <NavLink to="/admin/access-requests" className={navClass}>{t('nav.accessRequests')}</NavLink>
             <NavLink to="/admin/agent-settings" className={navClass}>{t('nav.agentSettings')}</NavLink>
             <NavLink to="/admin/platform-health" className={navClass}>{t('nav.platformHealth')}</NavLink>
           </nav>

@@ -284,6 +284,10 @@ export type AgentExecutionRecommendedOpportunity = {
 
 export type AgentExecutionDetail = {
   summary: AgentExecutionSummary
+  current_stage: string | null
+  failed_agent: string | null
+  error_message: string | null
+  stack_trace: string | null
   planner: Record<string, unknown>
   discovery: Record<string, unknown>
   ranking: Record<string, unknown>

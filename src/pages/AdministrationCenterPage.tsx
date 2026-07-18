@@ -11,6 +11,7 @@ import {
   StatusBadge
 } from '../components/design-system'
 import { listAgentSettings } from '../lib/agentSettingsApi'
+import { listAccessRequests } from '../lib/accessRequestApi'
 import { listAdminUsers } from '../lib/authApi'
 import { listCampaignProfiles } from '../lib/campaignProfileApi'
 import {
@@ -148,6 +149,7 @@ export default function AdministrationCenterPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [usersCount, setUsersCount] = useState<CountValue>(null)
+  const [accessRequestsCount, setAccessRequestsCount] = useState<CountValue>(null)
   const [agentSettingsCount, setAgentSettingsCount] = useState<CountValue>(null)
   const [notificationsCount, setNotificationsCount] = useState<CountValue>(null)
   const [schedules, setSchedules] = useState<CampaignSchedule[] | null>(null)
@@ -163,6 +165,7 @@ export default function AdministrationCenterPage() {
 
     Promise.allSettled([
       listAdminUsers(),
+      listAccessRequests({ status: 'PENDING' }),
       listAgentSettings(),
       listNotifications({ limit: 100, offset: 0 }),
       listCampaignSchedules(),
@@ -172,8 +175,9 @@ export default function AdministrationCenterPage() {
       listAuditLog({ limit: 10, offset: 0 }),
       platformHealth()
     ]).then(results => {
-      const [usersResult, settingsResult, notificationsResult, schedulesResult, profilesResult, campaignsResult, executionsResult, auditResult, healthResult] = results
+      const [usersResult, accessRequestsResult, settingsResult, notificationsResult, schedulesResult, profilesResult, campaignsResult, executionsResult, auditResult, healthResult] = results
       setUsersCount(usersResult.status === 'fulfilled' ? usersResult.value.length : null)
+      setAccessRequestsCount(accessRequestsResult.status === 'fulfilled' ? accessRequestsResult.value.length : null)
       setAgentSettingsCount(settingsResult.status === 'fulfilled' ? settingsResult.value.length : null)
       setNotificationsCount(notificationsResult.status === 'fulfilled' ? notificationsResult.value.length : null)
       setSchedules(schedulesResult.status === 'fulfilled' ? schedulesResult.value : null)
@@ -204,6 +208,12 @@ export default function AdministrationCenterPage() {
       description: 'Review API, execution, and campaign health signals.',
       count: healthOk === null ? null : healthOk ? 1 : 0,
       href: '/admin/platform-health'
+    },
+    {
+      title: 'Access Requests',
+      description: 'Review pending requests from people asking to join the platform.',
+      count: accessRequestsCount,
+      href: '/admin/access-requests'
     },
     {
       title: 'Audit Log',
@@ -241,7 +251,7 @@ export default function AdministrationCenterPage() {
       count: executions === null ? null : executions.length,
       href: '/agent/executions'
     }
-  ], [agentSettingsCount, auditRecords.length, campaignProfilesCount, campaignsCount, executions, healthOk, notificationsCount, schedules, usersCount])
+  ], [accessRequestsCount, agentSettingsCount, auditRecords.length, campaignProfilesCount, campaignsCount, executions, healthOk, notificationsCount, schedules, usersCount])
 
   const runningExecutions = useMemo(
     () => executions?.filter(execution => runningStatuses.has(execution.status)).length ?? null,

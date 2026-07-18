@@ -388,6 +388,59 @@ function ExecutionTimeline({ progress }: { progress: CampaignExecutionProgress |
   )
 }
 
+function isFailedExecution(summaryStatus: string, progressStatus?: string) {
+  return summaryStatus === 'FAILED' || progressStatus === 'FAILED'
+}
+
+function ExecutionFailurePanel({
+  detail,
+  progress
+}: {
+  detail: AgentExecutionDetail
+  progress: CampaignExecutionProgress | null
+}) {
+  const [expanded, setExpanded] = useState(false)
+  const stage = detail.current_stage || progress?.current_stage || 'Not Available'
+  const agent = detail.failed_agent || 'Not Available'
+  const message = detail.error_message || 'The campaign failed before a detailed error message was persisted.'
+
+  return (
+    <SectionCard className="border-red-200 bg-red-50/60">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge tone="red">FAILED</StatusBadge>
+            <span className="text-xs font-bold uppercase tracking-wide text-red-700">Execution error</span>
+          </div>
+          <h3 className="mt-3 text-lg font-extrabold text-red-950">Erro</h3>
+          <p className="mt-2 max-w-3xl text-sm font-semibold text-red-800">{message}</p>
+        </div>
+        <button
+          className="rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+          disabled={!detail.stack_trace}
+          onClick={() => setExpanded(value => !value)}
+          type="button"
+        >
+          {expanded ? 'Ocultar detalhes' : 'Mostrar detalhes'}
+        </button>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <InfoCard title="Agente responsável">
+          <div className="text-sm font-bold text-slate-900">{agent}</div>
+        </InfoCard>
+        <InfoCard title="Estágio">
+          <div className="text-sm font-bold text-slate-900">{readable(stage)}</div>
+        </InfoCard>
+      </div>
+      {expanded && detail.stack_trace && (
+        <pre className="mt-4 max-h-96 overflow-auto rounded-xl border border-red-100 bg-slate-950 p-4 text-xs leading-relaxed text-slate-100">
+          {detail.stack_trace}
+        </pre>
+      )}
+    </SectionCard>
+  )
+}
+
 type EndToEndMetrics = {
   totalDuration: number | null
   jobsFound: number
@@ -990,6 +1043,19 @@ function ExecutionDetailPage({ executionId }: { executionId: string }) {
     }
   }, [executionId])
 
+  useEffect(() => {
+    if (!progress || shouldPollProgress(progress)) {
+      return
+    }
+
+    let active = true
+    getAgentExecution(executionId)
+      .then(response => { if (active) setDetail(response) })
+      .catch(() => undefined)
+
+    return () => { active = false }
+  }, [executionId, progress?.status])
+
   if (loading && !progress) return <LoadingState title={t('agentExecutions.loadingDetail')} message={t('agentExecutions.loadingDetailDescription')} />
   if (error && !progress) return <ErrorState title={t('agentExecutions.detailErrorTitle')} message={error} action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => navigate('/agent/executions')}>{t('agentExecutions.backToExecutions')}</button>} />
   if (!detail && progress) {
@@ -1073,6 +1139,9 @@ function ExecutionDetailPage({ executionId }: { executionId: string }) {
 
       {progress && <ExecutionProgressPanel progress={progress} />}
       <ExecutionTimeline progress={progress} />
+      {isFailedExecution(summary.status, progress?.status) && (
+        <ExecutionFailurePanel detail={detail} progress={progress} />
+      )}
       <CampaignSummary metrics={endToEndMetrics} />
       <DecisionSummary metrics={endToEndMetrics} />
       <TopRecommendedOpportunities detail={detail} />

@@ -7,6 +7,18 @@ type LoginLocationState = {
   from?: string
 }
 
+function isActivationRequiredError(message: string) {
+  const normalized = message.toLowerCase()
+  return (
+    normalized.includes('activation') ||
+    normalized.includes('activate') ||
+    normalized.includes('not active') ||
+    normalized.includes('inactive') ||
+    normalized.includes('pending') ||
+    normalized.includes('first access')
+  )
+}
+
 export default function LoginPageI18n() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -15,6 +27,7 @@ export default function LoginPageI18n() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [activationRequired, setActivationRequired] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   const from = (location.state as LoginLocationState | null)?.from ?? '/'
@@ -32,13 +45,16 @@ export default function LoginPageI18n() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError(null)
+    setActivationRequired(false)
     setSubmitting(true)
 
     try {
       await login(email, password)
       navigate(from, { replace: true })
     } catch (error) {
-      setError(error instanceof Error ? error.message : t('login.genericError'))
+      const message = error instanceof Error ? error.message : t('login.genericError')
+      setActivationRequired(isActivationRequiredError(message))
+      setError(message)
     } finally {
       setSubmitting(false)
     }
@@ -115,7 +131,12 @@ export default function LoginPageI18n() {
 
               {error && (
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {error}
+                  <div>{activationRequired ? t('login.activationRequiredMessage') : error}</div>
+                  {activationRequired && (
+                    <Link className="mt-3 inline-flex rounded-lg border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50" to="/first-access">
+                      {t('account.activateAccount')}
+                    </Link>
+                  )}
                 </div>
               )}
 
@@ -132,9 +153,30 @@ export default function LoginPageI18n() {
               <Link className="text-brand-700 hover:text-brand-800" to="/forgot-password">
                 {t('login.forgotPassword')}
               </Link>
-              <Link className="text-brand-700 hover:text-brand-800" to="/first-access">
-                {t('login.firstAccess')}
-              </Link>
+            </div>
+
+            <div className="mt-8 border-t border-slate-100 pt-6">
+              <p className="text-sm font-semibold text-slate-900">{t('login.publicFlowsTitle')}</p>
+              <div className="mt-4 grid gap-3">
+                <div className="rounded-lg border border-slate-200 p-4">
+                  <div className="text-sm font-bold text-slate-900">{t('login.haveAccountTitle')}</div>
+                  <p className="mt-1 text-sm text-slate-500">{t('login.haveAccountDescription')}</p>
+                </div>
+                <div className="rounded-lg border border-slate-200 p-4">
+                  <div className="text-sm font-bold text-slate-900">{t('login.needAccountTitle')}</div>
+                  <p className="mt-1 text-sm text-slate-500">{t('login.needAccountDescription')}</p>
+                  <Link className="mt-3 inline-flex rounded-lg border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50" to="/access-request">
+                    {t('account.requestAccess')}
+                  </Link>
+                </div>
+                <div className="rounded-lg border border-slate-200 p-4">
+                  <div className="text-sm font-bold text-slate-900">{t('login.receivedActivationTitle')}</div>
+                  <p className="mt-1 text-sm text-slate-500">{t('login.receivedActivationDescription')}</p>
+                  <Link className="mt-3 inline-flex rounded-lg border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50" to="/first-access">
+                    {t('account.activateAccount')}
+                  </Link>
+                </div>
+              </div>
             </div>
           </section>
         </div>

@@ -22,6 +22,13 @@ export type LinkedInAccountPayload = {
   make_default: boolean
 }
 
+export type LinkedInAccountLoginPayload = {
+  display_name: string
+  linkedin_email: string
+  linkedin_password: string
+  make_default: boolean
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return apiRequest<T>(path, {
     ...options,
@@ -41,6 +48,13 @@ export function listLinkedInAccounts(includeDisconnected = false) {
 
 export function createLinkedInAccount(payload: LinkedInAccountPayload) {
   return request<LinkedInAccount>('/api/linkedin-accounts', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export function createLinkedInAccountFromLogin(payload: LinkedInAccountLoginPayload) {
+  return request<LinkedInAccount>('/api/linkedin-accounts/login', {
     method: 'POST',
     body: JSON.stringify(payload)
   })

@@ -88,6 +88,10 @@ export default function Header({ onOpenCommandPalette }: HeaderProps) {
       title: t('header.linkedinAccounts.title'),
       subtitle: t('header.linkedinAccounts.subtitle')
     },
+    '/career/discovery-sources': {
+      title: t('header.discoverySources.title'),
+      subtitle: t('header.discoverySources.subtitle')
+    },
     '/career/campaign-profiles': {
       title: t('header.campaignProfiles.title'),
       subtitle: t('header.campaignProfiles.subtitle')

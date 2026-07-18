@@ -16,12 +16,17 @@ const LoginPage = lazy(() => import('./pages/LoginPageI18n'))
 const FirstAccessPage = lazy(() => import('./pages/FirstAccessPage'))
 const ForgotPasswordPage = lazy(() => import('./pages/ForgotPasswordPage'))
 const ResetPasswordPage = lazy(() => import('./pages/ResetPasswordPage'))
+const AccessRequestPage = lazy(() => import('./pages/AccessRequestPage'))
+const AccessRequestSuccessPage = lazy(() => import('./pages/AccessRequestSuccessPage'))
+const AccessRequestStatusPage = lazy(() => import('./pages/AccessRequestStatusPage'))
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'))
 const AdminUsersPage = lazy(() => import('./pages/AdminUsersPage'))
+const AccessRequestsPage = lazy(() => import('./pages/AccessRequestsPage'))
 const AgentSettingsPage = lazy(() => import('./pages/AgentSettingsPage'))
 const CandidateProfilePage = lazy(() => import('./pages/CandidateProfilePage'))
 const ResumesPage = lazy(() => import('./pages/ResumesPage'))
 const LinkedInAccountsPage = lazy(() => import('./pages/LinkedInAccountsPage'))
+const DiscoverySourcesPage = lazy(() => import('./pages/DiscoverySourcesPage'))
 const AgentExecutionsPage = lazy(() => import('./pages/AgentExecutionsPage'))
 const RunCampaignWizardPage = lazy(() => import('./pages/RunCampaignWizardPage'))
 const CampaignProfilesPage = lazy(() => import('./pages/CampaignProfilesPage'))
@@ -51,6 +56,9 @@ export default function App() {
         <Route path="/first-access" element={<FirstAccessPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
+        <Route path="/access-request" element={<AccessRequestPage />} />
+        <Route path="/access-request/success" element={<AccessRequestSuccessPage />} />
+        <Route path="/access-request/status" element={<AccessRequestStatusPage />} />
         <Route element={<ProtectedRoute />}>
           <Route path="/" element={<Navigate to="/workspace" replace />} />
           <Route path="/workspace" element={<MainLayout><WorkspaceDashboardPage /></MainLayout>} />
@@ -71,12 +79,14 @@ export default function App() {
           <Route path="/career/resumes" element={<MainLayout><ResumesPage /></MainLayout>} />
           <Route path="/career/resume-optimization" element={<MainLayout><ResumeOptimizationPage /></MainLayout>} />
           <Route path="/career/linkedin-accounts" element={<MainLayout><LinkedInAccountsPage /></MainLayout>} />
+          <Route path="/career/discovery-sources" element={<MainLayout><DiscoverySourcesPage /></MainLayout>} />
           <Route path="/career/campaign-profiles" element={<MainLayout><CampaignProfilesPage /></MainLayout>} />
           <Route path="/account/change-password" element={<MainLayout><ChangePasswordPage /></MainLayout>} />
           <Route path="/notifications" element={<MainLayout><NotificationsPage /></MainLayout>} />
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<MainLayout><AdministrationCenterPage /></MainLayout>} />
             <Route path="/admin/users" element={<MainLayout><AdminUsersPage /></MainLayout>} />
+            <Route path="/admin/access-requests" element={<MainLayout><AccessRequestsPage /></MainLayout>} />
             <Route path="/admin/agent-settings" element={<MainLayout><AgentSettingsPage /></MainLayout>} />
             <Route path="/admin/platform-health" element={<MainLayout><PlatformHealthPage /></MainLayout>} />
           </Route>

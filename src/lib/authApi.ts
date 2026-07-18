@@ -15,6 +15,8 @@ export type PlatformUser = {
   created_at: string
   updated_at: string
   last_login_at: string | null
+  identity_lifecycle_status?: string | null
+  first_access_status?: string | null
 }
 
 export type TokenResponse = {
@@ -36,6 +38,62 @@ export type CreateUserResponse = {
   user: PlatformUser
   activation_token: string
   activation_expires_at: string
+}
+
+export type InviteUserResponse = {
+  user_id: string
+  email?: string | null
+  full_name?: string | null
+  role?: 'ADMIN' | 'USER' | string | null
+  activation_token?: string | null
+  activation_link?: string | null
+  invitation_status?: string | null
+  provisioning_status?: string | null
+  identity_lifecycle_status?: string | null
+  first_access_status?: string | null
+  created_at?: string | null
+  provisioned_at?: string | null
+  expires_at?: string | null
+}
+
+export type UserInvitation = {
+  id: string
+  user_id: string
+  email: string
+  full_name: string
+  role: 'ADMIN' | 'USER' | string
+  notes: string | null
+  activation_token_id?: string | null
+  activation_token?: string | null
+  activation_link?: string | null
+  invitation_status?: string | null
+  provisioning_status?: string | null
+  identity_lifecycle_status?: string | null
+  first_access_status?: string | null
+  invited_by_user_id?: string | null
+  source?: string | null
+  source_reference_id?: string | null
+  provisioning_duration_ms?: number | null
+  created_at: string
+  provisioned_at?: string | null
+  expires_at?: string | null
+  updated_at?: string | null
+}
+
+export type InvitationManagementReport = {
+  previous_status: string
+  current_status: string
+  regenerated: boolean
+  revoked: boolean
+}
+
+export type InvitationRecoveryResponse = {
+  invitation: UserInvitation
+  activation_token?: string | null
+  activation_link?: string | null
+  activation_token_id?: string | null
+  activation_expires_at?: string | null
+  invitation_management: InvitationManagementReport
 }
 
 export class AuthApiError extends Error {
@@ -155,6 +213,26 @@ export function createAdminUser(payload: {
   })
 }
 
+export function inviteAdminUser(payload: {
+  full_name: string
+  email: string
+  role: 'ADMIN' | 'USER'
+  notes?: string | null
+}) {
+  return authRequest<InviteUserResponse>('/api/admin/users/invite', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export function listAdminUserInvitations() {
+  return authRequest<UserInvitation[]>('/api/admin/users/invitations')
+}
+
+export function getAdminUserInvitation(invitationId: string) {
+  return authRequest<UserInvitation>(`/api/admin/users/invitations/${invitationId}`)
+}
+
 export function blockAdminUser(userId: string) {
   return authRequest<PlatformUser>(`/api/admin/users/${userId}/block`, {
     method: 'POST',
@@ -191,7 +269,7 @@ export function resetAdminUserPassword(userId: string) {
 }
 
 export function regenerateActivationToken(userId: string) {
-  return authRequest<CreateUserResponse>(`/api/admin/users/${userId}/activation-token`, {
+  return authRequest<InvitationRecoveryResponse>(`/api/admin/users/${userId}/activation-token/regenerate`, {
     method: 'POST',
     body: JSON.stringify({})
   })

@@ -4,6 +4,7 @@ import { getCandidateProfile, type CandidateProfile } from '../lib/candidateProf
 import { listResumes, type CandidateResume } from '../lib/resumeApi'
 import { listLinkedInAccounts, type LinkedInAccount } from '../lib/linkedinAccountApi'
 import { listCampaignProfiles, type CampaignProfile } from '../lib/campaignProfileApi'
+import { listDiscoverySources, type DiscoverySource } from '../lib/discoverySourceApi'
 import { runCampaign } from '../lib/campaignRunApi'
 import {
   ConfirmationDialog,
@@ -25,6 +26,7 @@ type WizardData = {
   resumes: CandidateResume[]
   linkedInAccounts: LinkedInAccount[]
   campaignProfiles: CampaignProfile[]
+  discoverySources: DiscoverySource[]
 }
 
 type StepKey = 'candidate' | 'resume' | 'linkedin' | 'campaign' | 'summary'
@@ -70,14 +72,16 @@ export default function RunCampaignWizardPage() {
       getCandidateProfile(),
       listResumes(false),
       listLinkedInAccounts(false),
-      listCampaignProfiles(false)
+      listCampaignProfiles(false),
+      listDiscoverySources(false)
     ])
-      .then(([candidateProfile, resumes, linkedInAccounts, campaignProfiles]) => {
+      .then(([candidateProfile, resumes, linkedInAccounts, campaignProfiles, discoverySources]) => {
         setData({
           candidateProfile,
           resumes,
           linkedInAccounts,
-          campaignProfiles
+          campaignProfiles,
+          discoverySources
         })
         setCandidateSelected(Boolean(candidateProfile.profile_id))
         setResumeId(resumes.find(resume => resume.active && resume.is_default)?.resume_id ?? resumes.find(resume => resume.active)?.resume_id ?? '')
@@ -97,11 +101,15 @@ export default function RunCampaignWizardPage() {
   const selectedResume = activeResumes.find(resume => resume.resume_id === resumeId) ?? null
   const selectedLinkedIn = activeLinkedInAccounts.find(account => account.account_id === linkedInAccountId) ?? null
   const selectedCampaign = activeCampaignProfiles.find(profile => profile.campaign_profile_id === campaignProfileId) ?? null
+  const selectedDiscoverySources = useMemo(() => (
+    data?.discoverySources.filter(source => source.active && source.linkedin_account_id === linkedInAccountId) ?? []
+  ), [data?.discoverySources, linkedInAccountId])
 
   const validation = useMemo(() => {
     const candidateReady = Boolean(candidateSelected && data?.candidateProfile?.profile_id)
     const resumeReady = Boolean(selectedResume)
     const linkedInReady = Boolean(selectedLinkedIn)
+    const discoverySourcesReady = selectedDiscoverySources.length > 0
     const campaignReady = Boolean(selectedCampaign)
     const referencesReady = Boolean(
       selectedCampaign
@@ -115,16 +123,17 @@ export default function RunCampaignWizardPage() {
       candidateReady,
       resumeReady,
       linkedInReady,
+      discoverySourcesReady,
       campaignReady,
       referencesReady,
-      readyToRun: candidateReady && resumeReady && linkedInReady && campaignReady && referencesReady
+      readyToRun: candidateReady && resumeReady && linkedInReady && discoverySourcesReady && campaignReady && referencesReady
     }
-  }, [candidateSelected, data, linkedInAccountId, resumeId, selectedCampaign, selectedLinkedIn, selectedResume])
+  }, [candidateSelected, data, linkedInAccountId, resumeId, selectedCampaign, selectedDiscoverySources.length, selectedLinkedIn, selectedResume])
 
   function canContinue() {
     if (activeStep.key === 'candidate') return validation.candidateReady
     if (activeStep.key === 'resume') return validation.resumeReady
-    if (activeStep.key === 'linkedin') return validation.linkedInReady
+    if (activeStep.key === 'linkedin') return validation.linkedInReady && validation.discoverySourcesReady
     if (activeStep.key === 'campaign') return validation.campaignReady
     return validation.readyToRun
   }
@@ -267,26 +276,29 @@ export default function RunCampaignWizardPage() {
 
           {activeStep.key === 'linkedin' && (
             activeLinkedInAccounts.length > 0 ? (
-              <div className="space-y-3">
-                {activeLinkedInAccounts.map(account => (
-                  <button
-                    key={account.account_id}
-                    className={`w-full rounded-xl border p-4 text-left transition ${selectedTone(account.account_id === linkedInAccountId)}`}
-                    type="button"
-                    onClick={() => setLinkedInAccountId(account.account_id)}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <div className="font-extrabold text-agent-primary">{account.display_name}</div>
-                        <div className="mt-1 text-sm text-slate-500">{account.linkedin_email}</div>
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  {activeLinkedInAccounts.map(account => (
+                    <button
+                      key={account.account_id}
+                      className={`w-full rounded-xl border p-4 text-left transition ${selectedTone(account.account_id === linkedInAccountId)}`}
+                      type="button"
+                      onClick={() => setLinkedInAccountId(account.account_id)}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="font-extrabold text-agent-primary">{account.display_name}</div>
+                          <div className="mt-1 text-sm text-slate-500">{account.linkedin_email}</div>
+                        </div>
+                        <div className="flex gap-2">
+                          {account.default_account && <StatusBadge tone="brand">Default</StatusBadge>}
+                          <StatusBadge tone={account.account_id === linkedInAccountId ? 'emerald' : 'slate'}>{account.account_id === linkedInAccountId ? 'Selected' : account.status}</StatusBadge>
+                        </div>
                       </div>
-                      <div className="flex gap-2">
-                        {account.default_account && <StatusBadge tone="brand">Default</StatusBadge>}
-                        <StatusBadge tone={account.account_id === linkedInAccountId ? 'emerald' : 'slate'}>{account.account_id === linkedInAccountId ? 'Selected' : account.status}</StatusBadge>
-                      </div>
-                    </div>
-                  </button>
-                ))}
+                    </button>
+                  ))}
+                </div>
+                <DiscoverySourcesCheck sources={selectedDiscoverySources} selectedLinkedIn={selectedLinkedIn} />
               </div>
             ) : (
               <EmptyState
@@ -340,6 +352,7 @@ export default function RunCampaignWizardPage() {
                 <SummaryRow label="Candidate" value={data.candidateProfile?.desired_occupation || data.candidateProfile?.current_occupation || 'Not Available'} ready={validation.candidateReady} />
                 <SummaryRow label="Resume" value={selectedResume?.display_name || 'Not Available'} ready={validation.resumeReady} />
                 <SummaryRow label="LinkedIn" value={selectedLinkedIn?.display_name || 'Not Available'} ready={validation.linkedInReady} />
+                <SummaryRow label="Discovery Sources" value={`${selectedDiscoverySources.length} active`} ready={validation.discoverySourcesReady} />
                 <SummaryRow label="Campaign" value={selectedCampaign?.name || 'Not Available'} ready={validation.campaignReady && validation.referencesReady} />
               </div>
               {!validation.referencesReady && selectedCampaign && (
@@ -391,6 +404,7 @@ export default function RunCampaignWizardPage() {
             <ValidationRow label="Candidate" ready={validation.candidateReady} />
             <ValidationRow label="Resume" ready={validation.resumeReady} />
             <ValidationRow label="LinkedIn" ready={validation.linkedInReady} />
+            <ValidationRow label="Discovery Sources" ready={validation.discoverySourcesReady} />
             <ValidationRow label="Campaign" ready={validation.campaignReady && validation.referencesReady} />
           </div>
           <div className="mt-5 rounded-xl border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
@@ -415,6 +429,60 @@ export default function RunCampaignWizardPage() {
         onConfirm={() => void handleRunCampaign()}
       />
     </PageContainer>
+  )
+}
+
+function DiscoverySourcesCheck({
+  sources,
+  selectedLinkedIn
+}: {
+  sources: DiscoverySource[]
+  selectedLinkedIn: LinkedInAccount | null
+}) {
+  if (!selectedLinkedIn) {
+    return (
+      <InfoAlert className="border-amber-200 bg-amber-50 text-amber-700">
+        Select a LinkedIn account to validate Discovery Sources.
+      </InfoAlert>
+    )
+  }
+
+  if (sources.length === 0) {
+    return (
+      <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <div className="text-sm font-extrabold text-amber-900">No active Discovery Sources found.</div>
+            <p className="mt-1 text-sm text-amber-800">
+              This campaign cannot run until at least one active Discovery Source exists for the selected LinkedIn account.
+            </p>
+          </div>
+          <Link className="shrink-0 rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700" to="/career/discovery-sources">
+            Open Discovery Sources
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-extrabold text-emerald-950">Discovery Sources</div>
+          <p className="mt-1 text-sm text-emerald-800">{sources.length} Active Sources</p>
+        </div>
+        <StatusBadge tone="emerald">Ready</StatusBadge>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        {sources.map(source => (
+          <div className="rounded-lg border border-emerald-100 bg-white px-3 py-2 text-sm font-semibold text-slate-800" key={source.source_id}>
+            <span className="mr-2 text-emerald-600">✓</span>
+            {source.name}
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 

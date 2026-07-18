@@ -27,9 +27,19 @@ export type CampaignExecutionProgress = {
 }
 
 export function runCampaign(campaignProfileId: string) {
+  return request<RunCampaignResponse>(
+    `/api/campaigns/${encodeURIComponent(campaignProfileId)}/run`,
+    {
+      method: 'POST',
+      body: JSON.stringify({})
+    }
+  )
+}
+
+export function runAgentCampaign(campaignProfileId: string) {
   return request<RunCampaignResponse>('/api/agent/run', {
     method: 'POST',
-    body: JSON.stringify({ campaign_profile_id: Number(campaignProfileId) })
+    body: JSON.stringify({ campaign_profile_id: campaignProfileId })
   })
 }
 
