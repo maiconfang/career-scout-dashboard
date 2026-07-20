@@ -8,6 +8,7 @@ import {
   SectionCard,
   StatusBadge
 } from '../components/design-system'
+import { useLanguage } from '../i18n/LanguageProvider'
 import { Campaign, listCampaigns } from '../lib/api'
 
 const PAGE_SIZE = 25
@@ -16,9 +17,9 @@ function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-CA', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
 }
 
-function formatDuration(seconds: number) {
-  if (seconds < 60) return `${Math.round(seconds)} sec`
-  return `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} sec`
+function formatDuration(seconds: number, secondLabel: string, minuteLabel: string) {
+  if (seconds < 60) return `${Math.round(seconds)} ${secondLabel}`
+  return `${Math.floor(seconds / 60)} ${minuteLabel} ${Math.round(seconds % 60)} ${secondLabel}`
 }
 
 function campaignStatus(campaign: Campaign) {
@@ -32,6 +33,7 @@ function statusTone(status: string): 'emerald' | 'red' | 'slate' {
 }
 
 export default function CampaignHistory() {
+  const { t } = useLanguage()
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [offset, setOffset] = useState(0)
   const [returned, setReturned] = useState(0)
@@ -63,26 +65,26 @@ export default function CampaignHistory() {
   return (
     <PageContainer className="space-y-5" size="lg">
       <PageHeader
-        eyebrow="Campaign History"
-        title="Previous Career Scout campaigns"
-        description="Review when each campaign ran and the opportunities it processed."
+        eyebrow={t('campaignHistory.eyebrow')}
+        title={t('campaignHistory.title')}
+        description={t('campaignHistory.description')}
       />
 
-      {loading && <LoadingState title="Loading campaigns" message="Fetching previous Career Scout campaigns." />}
+      {loading && <LoadingState title={t('campaignHistory.loading')} message={t('campaignHistory.loadingDescription')} />}
       {!loading && error && (
         <ErrorState
-          title="Campaign history is unavailable"
+          title={t('campaignHistory.errorTitle')}
           message={error}
-          action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>Try again</button>}
+          action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>{t('home.tryAgain')}</button>}
         />
       )}
-      {!loading && !error && campaigns.length === 0 && <EmptyState title="No campaigns found" message="Career Scout has not recorded a campaign yet." />}
+      {!loading && !error && campaigns.length === 0 && <EmptyState title={t('campaignHistory.emptyTitle')} message={t('campaignHistory.emptyDescription')} />}
 
       {!loading && !error && campaigns.length > 0 && (
         <>
           <SectionCard className="overflow-hidden" padded={false}>
             <div className="hidden grid-cols-[1.4fr_0.7fr_repeat(4,0.6fr)_0.8fr] gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase text-slate-500 lg:grid">
-              <div>Campaign</div><div>Status</div><div>Found</div><div>Ranked</div><div>Top 5</div><div>Apply</div><div>Duration</div>
+              <div>{t('agentExecutions.campaign')}</div><div>{t('agentExecutions.status')}</div><div>{t('campaignHistory.found')}</div><div>{t('campaignHistory.ranked')}</div><div>{t('campaignHistory.topFive')}</div><div>{t('campaignHistory.apply')}</div><div>{t('agentExecutions.duration')}</div>
             </div>
             <div className="divide-y divide-slate-100">
               {campaigns.map(campaign => {
@@ -98,11 +100,11 @@ export default function CampaignHistory() {
                         {status.toLowerCase().replace(/^./, value => value.toUpperCase())}
                       </StatusBadge>
                     </div>
-                    <div><span className="text-xs text-slate-500 lg:hidden">Found: </span><span className="font-semibold text-slate-700">{campaign.jobs_collected}</span></div>
-                    <div><span className="text-xs text-slate-500 lg:hidden">Ranked: </span><span className="font-semibold text-slate-700">{campaign.jobs_accepted}</span></div>
-                    <div><span className="text-xs text-slate-500 lg:hidden">Top 5: </span><span className="font-semibold text-slate-700">{campaign.top_5}</span></div>
-                    <div><span className="text-xs text-slate-500 lg:hidden">Apply: </span><span className="font-semibold text-emerald-700">{campaign.apply_count}</span></div>
-                    <div className="text-slate-600">{formatDuration(campaign.duration_seconds)}</div>
+                    <div><span className="text-xs text-slate-500 lg:hidden">{t('campaignHistory.found')}: </span><span className="font-semibold text-slate-700">{campaign.jobs_collected}</span></div>
+                    <div><span className="text-xs text-slate-500 lg:hidden">{t('campaignHistory.ranked')}: </span><span className="font-semibold text-slate-700">{campaign.jobs_accepted}</span></div>
+                    <div><span className="text-xs text-slate-500 lg:hidden">{t('campaignHistory.topFive')}: </span><span className="font-semibold text-slate-700">{campaign.top_5}</span></div>
+                    <div><span className="text-xs text-slate-500 lg:hidden">{t('campaignHistory.apply')}: </span><span className="font-semibold text-emerald-700">{campaign.apply_count}</span></div>
+                    <div className="text-slate-600">{formatDuration(campaign.duration_seconds, t('campaignHistory.seconds'), t('campaignHistory.minutes'))}</div>
                   </article>
                 )
               })}
@@ -110,9 +112,9 @@ export default function CampaignHistory() {
           </SectionCard>
 
           <div className="flex items-center justify-between">
-            <button className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40" disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - PAGE_SIZE))}>Previous</button>
-            <span className="text-xs text-slate-500">Campaigns {offset + 1}–{offset + returned}</span>
-            <button className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40" disabled={returned < PAGE_SIZE} onClick={() => setOffset(value => value + PAGE_SIZE)}>Next</button>
+            <button className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40" disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - PAGE_SIZE))}>{t('agentExecutions.previous')}</button>
+            <span className="text-xs text-slate-500">{t('campaignHistory.showing').replace('{from}', String(offset + 1)).replace('{to}', String(offset + returned))}</span>
+            <button className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-40" disabled={returned < PAGE_SIZE} onClick={() => setOffset(value => value + PAGE_SIZE)}>{t('agentExecutions.next')}</button>
           </div>
         </>
       )}

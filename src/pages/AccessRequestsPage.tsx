@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   ConfirmationDialog,
   EmptyState,
@@ -192,6 +193,8 @@ function activationTokenFromLink(activationLink?: string | null) {
 }
 
 export default function AccessRequestsPage() {
+  const [searchParams] = useSearchParams()
+  const requestedDetailId = searchParams.get('requestId')?.trim() ?? ''
   const [requests, setRequests] = useState<AccessRequest[]>([])
   const [users, setUsers] = useState<PlatformUser[]>([])
   const [invitations, setInvitations] = useState<UserInvitation[]>([])
@@ -250,6 +253,12 @@ export default function AccessRequestsPage() {
   useEffect(() => {
     load()
   }, [statusFilter])
+
+  useEffect(() => {
+    if (requestedDetailId) {
+      openDetail(requestedDetailId)
+    }
+  }, [requestedDetailId])
 
   const filteredRequests = useMemo(() => {
     const normalizedCountry = countryFilter.trim().toLowerCase()

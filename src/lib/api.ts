@@ -424,13 +424,7 @@ export type ResumeOptimization = {
   resume_completeness_score: number
 }
 
-export type NotificationType =
-  | 'CAMPAIGN_COMPLETED'
-  | 'CAMPAIGN_FAILED'
-  | 'REPLAY_COMPLETED'
-  | 'REPLAY_FAILED'
-  | 'SCHEDULER_EXECUTED'
-  | 'SCHEDULER_FAILED'
+export type NotificationType = string
 
 export type NotificationSeverity = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR'
 
@@ -444,6 +438,7 @@ export type PlatformNotification = {
   is_read: boolean
   related_execution_id: string | null
   related_campaign_id: string | null
+  metadata?: Record<string, unknown>
   created_at: string
   read_at: string | null
 }

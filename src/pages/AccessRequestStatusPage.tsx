@@ -12,9 +12,11 @@ import {
   SuccessAlert
 } from '../components/design-system'
 import {
-  AccessRequest,
-  AccessRequestStatus,
-  getAccessRequest
+  getPublicAccessRequestStatus,
+  readRememberedPublicAccessRequest,
+  type AccessRequest,
+  type AccessRequestStatus,
+  type PublicAccessRequestStatus
 } from '../lib/accessRequestApi'
 
 const NOT_AVAILABLE = 'Not Available'
@@ -130,27 +132,46 @@ export default function AccessRequestStatusPage() {
   const requestId = searchParams.get('id')?.trim() ?? ''
   const [draftId, setDraftId] = useState(requestId)
   const [accessRequest, setAccessRequest] = useState<AccessRequest | null>(null)
+  const [publicStatus, setPublicStatus] = useState<PublicAccessRequestStatus | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const lastUpdated = useMemo(() => {
-    if (!accessRequest) return NOT_AVAILABLE
-    return formatDateTime(accessRequest.rejected_at ?? accessRequest.approved_at ?? accessRequest.created_at)
-  }, [accessRequest])
+    const source = publicStatus ?? accessRequest
+    if (!source) return NOT_AVAILABLE
+    return formatDateTime(source.rejected_at ?? source.approved_at ?? source.created_at)
+  }, [accessRequest, publicStatus])
+
+  const currentStatus = publicStatus?.status ?? accessRequest?.status ?? null
 
   function load(id: string) {
     if (!id) {
       setAccessRequest(null)
+      setPublicStatus(null)
       setError(null)
       return
     }
 
+    const remembered = readRememberedPublicAccessRequest(id)
+    setAccessRequest(remembered)
+    setPublicStatus(null)
     setLoading(true)
     setError(null)
-    getAccessRequest(id)
-      .then(setAccessRequest)
+    getPublicAccessRequestStatus(id)
+      .then(status => {
+        setPublicStatus(status)
+        setAccessRequest(current => current ? {
+          ...current,
+          status: status.status,
+          created_at: status.created_at,
+          approved_at: status.approved_at,
+          rejected_at: status.rejected_at,
+          provisioning_duration_ms: status.provisioning_duration_ms
+        } : null)
+      })
       .catch(error => {
         setAccessRequest(null)
+        setPublicStatus(null)
         setError(error instanceof Error ? error.message : 'Unable to load this access request.')
       })
       .finally(() => setLoading(false))
@@ -209,11 +230,11 @@ export default function AccessRequestStatusPage() {
           />
         )}
 
-        {!loading && !error && !accessRequest && (
+        {!loading && !error && !currentStatus && (
           <EmptyState title="No request selected" message="Paste your access request id to view the current status." />
         )}
 
-        {accessRequest && (
+        {currentStatus && (
           <div className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <div className="space-y-5">
               <SectionCard
@@ -221,15 +242,15 @@ export default function AccessRequestStatusPage() {
                 description="Latest available state for this request."
               >
                 <div className="flex flex-wrap items-center gap-3">
-                  <StatusBadge tone={statusTone(accessRequest.status)}>{readable(accessRequest.status)}</StatusBadge>
+                  <StatusBadge tone={statusTone(currentStatus)}>{readable(currentStatus)}</StatusBadge>
                   <span className="text-sm font-semibold text-slate-600">Last updated: {lastUpdated}</span>
                 </div>
-                {accessRequest.status === 'REJECTED' && (
+                {currentStatus === 'REJECTED' && (
                   <InfoAlert className="mt-4">
                     This request was not approved. Please review your information and contact the platform administrator if you believe this needs another look.
                   </InfoAlert>
                 )}
-                {accessRequest.status === 'USER_CREATED' && (
+                {currentStatus === 'USER_CREATED' && (
                   <SuccessAlert className="mt-4">
                     Your account has been created. Please use your activation link or activation token to activate it.
                   </SuccessAlert>
@@ -238,17 +259,22 @@ export default function AccessRequestStatusPage() {
 
               <SectionCard title="Request Information" description="Information submitted with the access request.">
                 <div className="grid gap-3 md:grid-cols-2">
-                  <Field label="Name" value={accessRequest.full_name} />
-                  <Field label="Email" value={accessRequest.email} />
-                  <Field label="Desired Position" value={accessRequest.desired_position} />
-                  <Field label="Country" value={accessRequest.country} />
-                  <Field label="Requested At" value={formatDateTime(accessRequest.created_at)} />
+                  <Field label="Name" value={accessRequest?.full_name} />
+                  <Field label="Email" value={accessRequest?.email} />
+                  <Field label="Desired Position" value={accessRequest?.desired_position} />
+                  <Field label="Country" value={accessRequest?.country} />
+                  <Field label="Requested At" value={formatDateTime(accessRequest?.created_at ?? publicStatus?.created_at)} />
                   <Field label="Last Update" value={lastUpdated} />
                 </div>
+                {!accessRequest && (
+                  <p className="mt-4 text-sm text-slate-500">
+                    Personal request details are only shown in the browser used to submit the request.
+                  </p>
+                )}
               </SectionCard>
             </div>
 
-            <RequestTimeline status={accessRequest.status} />
+            <RequestTimeline status={currentStatus} />
           </div>
         )}
       </PageContainer>

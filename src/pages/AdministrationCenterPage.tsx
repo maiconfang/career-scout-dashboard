@@ -239,12 +239,12 @@ export default function AdministrationCenterPage() {
       count: schedules === null ? null : schedules.length,
       href: '/admin/platform-health'
     },
-    {
-      title: 'Campaigns',
-      description: 'Open persisted campaign history and campaign profiles.',
-      count: Math.max(campaignProfilesCount ?? 0, campaignsCount ?? 0) || (campaignProfilesCount === null && campaignsCount === null ? null : 0),
-      href: '/career/campaign-profiles'
-    },
+      {
+        title: 'Campaigns',
+        description: 'Open campaign setup, management, and execution entry points.',
+        count: Math.max(campaignProfilesCount ?? 0, campaignsCount ?? 0) || (campaignProfilesCount === null && campaignsCount === null ? null : 0),
+        href: '/career/campaigns'
+      },
     {
       title: 'Executions',
       description: 'Track recent agent execution runs and details.',

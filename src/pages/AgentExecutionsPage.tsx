@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   EmptyState,
   ErrorState,
@@ -114,6 +114,7 @@ function decisionTone(decision: string | null | undefined): 'emerald' | 'amber' 
 }
 
 function JsonBlock({ value, title }: { value: unknown, title: string }) {
+  const { t } = useLanguage()
   const empty = value === null || value === undefined
     || (Array.isArray(value) && value.length === 0)
     || (typeof value === 'object' && !Array.isArray(value) && Object.keys(value as Record<string, unknown>).length === 0)
@@ -124,7 +125,7 @@ function JsonBlock({ value, title }: { value: unknown, title: string }) {
         <h3 className="text-sm font-extrabold uppercase tracking-wide text-slate-700">{title}</h3>
       </div>
       {empty ? (
-        <div className="px-5 py-6 text-sm text-slate-500">No persisted data available for this section.</div>
+        <div className="px-5 py-6 text-sm text-slate-500">{t('agentExecutions.noPersistedData')}</div>
       ) : (
         <pre className="max-h-[520px] overflow-auto whitespace-pre-wrap break-words p-5 text-xs leading-5 text-slate-700">
           {JSON.stringify(value, null, 2)}
@@ -142,9 +143,9 @@ const executionStages = [
   'MATCH_ENGINE',
   'RANKING',
   'DECISION',
-  'RECOMMENDATION',
-  'COMPLETED'
+  'RECOMMENDATION'
 ]
+const executionStageSet = new Set(executionStages)
 
 const timelineStages = [
   'PREPARING',
@@ -171,13 +172,28 @@ const terminalStatuses = new Set([
 ])
 
 function progressPercentage(progress: CampaignExecutionProgress) {
-  if (typeof progress.progress === 'number') {
-    return Math.max(0, Math.min(100, Math.round(progress.progress)))
+  const status = progress.status?.toUpperCase()
+  if (status === 'COMPLETED') {
+    return 100
   }
 
-  const completed = progress.completed_stages?.length ?? 0
-  const current = progress.current_stage && executionStages.includes(progress.current_stage) ? 1 : 0
-  return Math.max(0, Math.min(100, Math.round(((completed + current) / executionStages.length) * 100)))
+  const completedStages = new Set(
+    (progress.completed_stages ?? [])
+      .map(stage => stage.toUpperCase())
+      .filter(stage => executionStageSet.has(stage))
+  )
+  const currentStage = progress.current_stage?.toUpperCase()
+  const currentStageIndex = currentStage ? executionStages.indexOf(currentStage) : -1
+  const reachedStages = currentStageIndex >= 0 ? currentStageIndex + 1 : 0
+  const completed = Math.max(completedStages.size, reachedStages)
+
+  return Math.max(0, Math.min(100, Math.round((completed / executionStages.length) * 100)))
+}
+
+function summaryProgressPercentage(summary: AgentExecutionSummary, progress: CampaignExecutionProgress | null) {
+  if (progress) return progressPercentage(progress)
+  if (summary.status?.toUpperCase() === 'COMPLETED') return 100
+  return Math.max(0, Math.min(100, Math.round(summary.progress)))
 }
 
 function shouldPollProgress(progress: CampaignExecutionProgress | null) {
@@ -219,14 +235,15 @@ function countFrom(report: Record<string, unknown>, sectionName: string, fieldNa
 }
 
 function ExecutionProgressPanel({ progress }: { progress: CampaignExecutionProgress }) {
+  const { t } = useLanguage()
   const percentage = progressPercentage(progress)
   const duration = progress.duration_seconds ?? progress.duration
 
   return (
     <InfoCard
       actions={<StatusBadge tone={progressStatusTone(progress.status)}>{readable(progress.status)}</StatusBadge>}
-      label="Campaign Runner"
-      title="Execution progress"
+      label={t('agentExecutions.campaignRunner')}
+      title={t('agentExecutions.executionProgress')}
     >
       <div className="space-y-4">
         <div>
@@ -240,19 +257,19 @@ function ExecutionProgressPanel({ progress }: { progress: CampaignExecutionProgr
         </div>
         <div className="grid gap-3 text-sm md:grid-cols-4">
           <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-            <div className="text-xs font-bold uppercase text-slate-500">Current stage</div>
+            <div className="text-xs font-bold uppercase text-slate-500">{t('agentExecutions.currentStage')}</div>
             <div className="mt-1 font-semibold text-slate-900">{readable(progress.current_stage)}</div>
           </div>
           <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-            <div className="text-xs font-bold uppercase text-slate-500">Next stage</div>
+            <div className="text-xs font-bold uppercase text-slate-500">{t('agentExecutions.nextStage')}</div>
             <div className="mt-1 font-semibold text-slate-900">{readable(progress.next_stage)}</div>
           </div>
           <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-            <div className="text-xs font-bold uppercase text-slate-500">Started</div>
+            <div className="text-xs font-bold uppercase text-slate-500">{t('agentExecutions.started')}</div>
             <div className="mt-1 font-semibold text-slate-900">{formatDateTime(progress.started_at)}</div>
           </div>
           <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-            <div className="text-xs font-bold uppercase text-slate-500">Duration</div>
+            <div className="text-xs font-bold uppercase text-slate-500">{t('agentExecutions.duration')}</div>
             <div className="mt-1 font-semibold text-slate-900">{formatDuration(duration)}</div>
           </div>
         </div>
@@ -267,6 +284,7 @@ function timelineStatus(stage: string, progress: CampaignExecutionProgress): Tim
   if (stage === 'FAILED') return progress.status === 'FAILED' ? 'Failed' : 'Waiting'
   if (stage === 'CANCELLED') return progress.status === 'CANCELLED' ? 'Cancelled' : 'Waiting'
   if (stage === 'COMPLETED') return progress.status === 'COMPLETED' ? 'Completed' : 'Waiting'
+  if (progress.status === 'COMPLETED' && executionStageSet.has(stage)) return 'Completed'
   if (progress.completed_stages?.includes(stage)) return 'Completed'
   if (progress.current_stage === stage && progress.status === 'FAILED') return 'Failed'
   if (progress.current_stage === stage && progress.status === 'CANCELLED') return 'Cancelled'
@@ -329,14 +347,15 @@ function TimelineIcon({ status }: { status: TimelineStageStatus }) {
 }
 
 function ExecutionTimeline({ progress }: { progress: CampaignExecutionProgress | null }) {
+  const { t } = useLanguage()
   if (!progress) {
     return (
       <SectionCard>
         <div className="mb-4">
-          <h3 className="text-lg font-extrabold text-agent-primary">Execution Timeline</h3>
-          <p className="text-sm text-slate-500">Live stage status from Campaign Runner progress.</p>
+          <h3 className="text-lg font-extrabold text-agent-primary">{t('agentExecutions.executionTimeline')}</h3>
+          <p className="text-sm text-slate-500">{t('agentExecutions.executionTimelineDescription')}</p>
         </div>
-        <LoadingState title="Loading timeline" message="Fetching execution progress." />
+        <LoadingState title={t('agentExecutions.loadingTimeline')} message={t('agentExecutions.loadingTimelineDescription')} />
       </SectionCard>
     )
   }
@@ -345,8 +364,8 @@ function ExecutionTimeline({ progress }: { progress: CampaignExecutionProgress |
     <SectionCard>
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-lg font-extrabold text-agent-primary">Execution Timeline</h3>
-          <p className="text-sm text-slate-500">Live stage status from Campaign Runner progress.</p>
+          <h3 className="text-lg font-extrabold text-agent-primary">{t('agentExecutions.executionTimeline')}</h3>
+          <p className="text-sm text-slate-500">{t('agentExecutions.executionTimelineDescription')}</p>
         </div>
         <StatusBadge tone={progressStatusTone(progress.status)}>{readable(progress.status)}</StatusBadge>
       </div>
@@ -376,7 +395,7 @@ function ExecutionTimeline({ progress }: { progress: CampaignExecutionProgress |
                   <TimelineIcon status={status} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-bold uppercase tracking-wide text-slate-500">Timestamp</div>
+                  <div className="text-xs font-bold uppercase tracking-wide text-slate-500">{t('agentExecutions.timestamp')}</div>
                   <div className="mt-1 break-words text-sm font-semibold text-slate-900">{formatDateTime(timestamp)}</div>
                 </div>
               </div>
@@ -399,10 +418,11 @@ function ExecutionFailurePanel({
   detail: AgentExecutionDetail
   progress: CampaignExecutionProgress | null
 }) {
+  const { t } = useLanguage()
   const [expanded, setExpanded] = useState(false)
-  const stage = detail.current_stage || progress?.current_stage || 'Not Available'
-  const agent = detail.failed_agent || 'Not Available'
-  const message = detail.error_message || 'The campaign failed before a detailed error message was persisted.'
+  const stage = detail.current_stage || progress?.current_stage || t('common.notAvailable')
+  const agent = detail.failed_agent || t('common.notAvailable')
+  const message = detail.error_message || t('agentExecutions.failureMessageFallback')
 
   return (
     <SectionCard className="border-red-200 bg-red-50/60">
@@ -410,9 +430,9 @@ function ExecutionFailurePanel({
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <StatusBadge tone="red">FAILED</StatusBadge>
-            <span className="text-xs font-bold uppercase tracking-wide text-red-700">Execution error</span>
+            <span className="text-xs font-bold uppercase tracking-wide text-red-700">{t('agentExecutions.executionError')}</span>
           </div>
-          <h3 className="mt-3 text-lg font-extrabold text-red-950">Erro</h3>
+          <h3 className="mt-3 text-lg font-extrabold text-red-950">{t('agentExecutions.error')}</h3>
           <p className="mt-2 max-w-3xl text-sm font-semibold text-red-800">{message}</p>
         </div>
         <button
@@ -421,14 +441,14 @@ function ExecutionFailurePanel({
           onClick={() => setExpanded(value => !value)}
           type="button"
         >
-          {expanded ? 'Ocultar detalhes' : 'Mostrar detalhes'}
+          {expanded ? t('agentExecutions.hideDetails') : t('agentExecutions.showDetails')}
         </button>
       </div>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <InfoCard title="Agente responsável">
+        <InfoCard title={t('agentExecutions.failedAgent')}>
           <div className="text-sm font-bold text-slate-900">{agent}</div>
         </InfoCard>
-        <InfoCard title="Estágio">
+        <InfoCard title={t('agentExecutions.stage')}>
           <div className="text-sm font-bold text-slate-900">{readable(stage)}</div>
         </InfoCard>
       </div>
@@ -486,11 +506,12 @@ function executionMetrics(detail: AgentExecutionDetail): EndToEndMetrics {
 }
 
 function DecisionSummary({ metrics }: { metrics: EndToEndMetrics }) {
+  const { t } = useLanguage()
   return (
     <SectionCard>
       <div className="mb-4">
-        <h3 className="text-lg font-extrabold text-agent-primary">Decision Summary</h3>
-        <p className="text-sm text-slate-500">Decision totals produced by the operational Decision stage.</p>
+        <h3 className="text-lg font-extrabold text-agent-primary">{t('agentExecutions.decisionSummary')}</h3>
+        <p className="text-sm text-slate-500">{t('agentExecutions.decisionSummaryDescription')}</p>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
         <StatCard label="APPLY" value={metrics.apply} tone="emerald" />
@@ -502,11 +523,12 @@ function DecisionSummary({ metrics }: { metrics: EndToEndMetrics }) {
 }
 
 function CampaignSummary({ metrics }: { metrics: EndToEndMetrics }) {
+  const { t } = useLanguage()
   return (
     <SectionCard>
       <div className="mb-4">
-        <h3 className="text-lg font-extrabold text-agent-primary">Campaign Summary</h3>
-        <p className="text-sm text-slate-500">End-to-end campaign totals from the persisted execution record.</p>
+        <h3 className="text-lg font-extrabold text-agent-primary">{t('agentExecutions.campaignSummary')}</h3>
+        <p className="text-sm text-slate-500">{t('agentExecutions.campaignSummaryDescription')}</p>
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Duration" value={formatDuration(metrics.totalDuration)} tone="blue" />
@@ -522,32 +544,33 @@ function CampaignSummary({ metrics }: { metrics: EndToEndMetrics }) {
 }
 
 function ExecutionMetrics({ metrics }: { metrics: EndToEndMetrics }) {
+  const { t } = useLanguage()
   return (
     <SectionCard>
       <div className="mb-4">
-        <h3 className="text-lg font-extrabold text-agent-primary">Execution Metrics</h3>
-        <p className="text-sm text-slate-500">Stage durations reported by existing execution artifacts.</p>
+        <h3 className="text-lg font-extrabold text-agent-primary">{t('agentExecutions.executionMetrics')}</h3>
+        <p className="text-sm text-slate-500">{t('agentExecutions.executionMetricsDescription')}</p>
       </div>
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <InfoCard title="Planner">
           <div className="text-2xl font-black text-slate-950">{formatDuration(metrics.plannerDuration)}</div>
-          <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">Planner Duration</div>
+          <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">{t('agentExecutions.plannerDuration')}</div>
         </InfoCard>
         <InfoCard title="Discovery">
           <div className="text-2xl font-black text-slate-950">{formatDuration(metrics.discoveryDuration)}</div>
-          <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">Discovery Duration</div>
+          <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">{t('agentExecutions.discoveryDuration')}</div>
         </InfoCard>
         <InfoCard title="Match">
           <div className="text-2xl font-black text-slate-950">{formatDuration(metrics.matchDuration)}</div>
-          <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">Match Duration</div>
+          <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">{t('agentExecutions.matchDuration')}</div>
         </InfoCard>
         <InfoCard title="Ranking">
           <div className="text-2xl font-black text-slate-950">{formatDuration(metrics.rankingDuration)}</div>
-          <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">Ranking Duration</div>
+          <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">{t('agentExecutions.rankingDuration')}</div>
         </InfoCard>
         <InfoCard title="Decision">
           <div className="text-2xl font-black text-slate-950">{formatDuration(metrics.decisionDuration)}</div>
-          <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">Decision Duration</div>
+          <div className="mt-1 text-xs font-bold uppercase tracking-wide text-slate-500">{t('agentExecutions.decisionDuration')}</div>
         </InfoCard>
       </div>
     </SectionCard>
@@ -555,6 +578,7 @@ function ExecutionMetrics({ metrics }: { metrics: EndToEndMetrics }) {
 }
 
 function TopRecommendedOpportunities({ detail }: { detail: AgentExecutionDetail }) {
+  const { t } = useLanguage()
   const applyItems = detail.recommended_set
     .filter(item => item.recommendation_decision === 'APPLY')
     .sort((left, right) => (left.ranking_position ?? 9999) - (right.ranking_position ?? 9999))
@@ -563,13 +587,13 @@ function TopRecommendedOpportunities({ detail }: { detail: AgentExecutionDetail 
     <SectionCard className="rounded-2xl border-slate-200" padded={false}>
       <div className="flex flex-col gap-2 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h3 className="text-lg font-extrabold text-agent-primary">Top Recommended Opportunities</h3>
-          <p className="text-sm text-slate-500">Opportunities classified as APPLY by the persisted Decision output.</p>
+          <h3 className="text-lg font-extrabold text-agent-primary">{t('agentExecutions.topRecommendedOpportunities')}</h3>
+          <p className="text-sm text-slate-500">{t('agentExecutions.topRecommendedDescription')}</p>
         </div>
         <StatusBadge tone="emerald">{applyItems.length} APPLY</StatusBadge>
       </div>
       {applyItems.length === 0 ? (
-        <EmptyState title="No APPLY opportunities" message="This execution does not include persisted opportunities classified as APPLY." />
+        <EmptyState title={t('agentExecutions.noApplyOpportunities')} message={t('agentExecutions.noApplyOpportunitiesDescription')} />
       ) : (
         <div className="divide-y divide-slate-100">
           {applyItems.map(item => (
@@ -579,11 +603,11 @@ function TopRecommendedOpportunities({ detail }: { detail: AgentExecutionDetail 
                   <div className="flex flex-wrap gap-2">
                     <StatusBadge tone="emerald">APPLY</StatusBadge>
                     {item.decision_confidence && <StatusBadge>{item.decision_confidence}</StatusBadge>}
-                    {item.ranking_position && <StatusBadge tone="blue">Rank {item.ranking_position}</StatusBadge>}
+                    {item.ranking_position && <StatusBadge tone="blue">{t('opportunityInbox.rank').replace('{position}', String(item.ranking_position))}</StatusBadge>}
                   </div>
                   <h4 className="mt-3 text-base font-bold text-slate-950">{item.title}</h4>
                   <div className="mt-1 text-sm text-slate-600">
-                    {[item.company, item.location].filter(Boolean).join(' · ') || 'Company and location not provided'}
+                    {[item.company, item.location].filter(Boolean).join(' - ') || t('agentExecutions.companyLocationMissing')}
                   </div>
                   {item.decision_reason && <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{item.decision_reason}</p>}
                 </div>
@@ -591,7 +615,7 @@ function TopRecommendedOpportunities({ detail }: { detail: AgentExecutionDetail 
                   {item.match_score !== null && (
                     <div className="rounded-xl bg-slate-50 px-3 py-2 text-right">
                       <div className="text-lg font-black text-slate-900">{item.match_score.toFixed(1)}</div>
-                      <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Score</div>
+                      <div className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{t('agentExecutions.score')}</div>
                     </div>
                   )}
                   {item.job_url && <a className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-brand-500" href={item.job_url} rel="noreferrer" target="_blank">LinkedIn</a>}
@@ -606,6 +630,7 @@ function TopRecommendedOpportunities({ detail }: { detail: AgentExecutionDetail 
 }
 
 function CampaignResultsTab({ executionId }: { executionId: string }) {
+  const { t } = useLanguage()
   const [results, setResults] = useState<CampaignExecutionResults | null>(null)
   const [draftFilters, setDraftFilters] = useState<CampaignResultsDraftFilters>(initialResultDraftFilters)
   const [filters, setFilters] = useState<CampaignExecutionResultsQuery>(initialResultFilters)
@@ -675,22 +700,22 @@ function CampaignResultsTab({ executionId }: { executionId: string }) {
       <SearchToolbar className="bg-slate-50/70">
         <form className="grid w-full gap-3 md:grid-cols-6" onSubmit={applyFilters}>
           <select className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" onChange={event => updateFilter('decision', event.target.value)} value={draftFilters.decision}>
-            <option value="">All decisions</option>
+            <option value="">{t('opportunityRepository.allDecisions')}</option>
             <option value="APPLY">APPLY</option>
             <option value="DEFER">DEFER</option>
             <option value="CONSIDER">CONSIDER</option>
             <option value="DO_NOT_APPLY">DO_NOT_APPLY</option>
           </select>
           <select className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" onChange={event => updateFilter('recommendation', event.target.value)} value={draftFilters.recommendation}>
-            <option value="">All recommendations</option>
+            <option value="">{t('opportunityInbox.allRecommendations')}</option>
             <option value="APPLY">APPLY</option>
             <option value="DEFER">DEFER</option>
             <option value="CONSIDER">CONSIDER</option>
             <option value="DO_NOT_APPLY">DO_NOT_APPLY</option>
           </select>
-          <input className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" onChange={event => updateFilter('company', event.target.value)} placeholder="Company" value={draftFilters.company} />
-          <input className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" onChange={event => updateFilter('source', event.target.value)} placeholder="Source" value={draftFilters.source} />
-          <input className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" min="0" max="100" onChange={event => updateFilter('minimum_match_score', event.target.value)} placeholder="Minimum match" type="number" value={draftFilters.minimum_match_score} />
+          <input className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" onChange={event => updateFilter('company', event.target.value)} placeholder={t('opportunityInbox.company')} value={draftFilters.company} />
+          <input className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" onChange={event => updateFilter('source', event.target.value)} placeholder={t('agentExecutions.source')} value={draftFilters.source} />
+          <input className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" min="0" max="100" onChange={event => updateFilter('minimum_match_score', event.target.value)} placeholder={t('agentExecutions.minimumMatch')} type="number" value={draftFilters.minimum_match_score} />
           <select className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm" onChange={event => {
             const [sort_by, order] = event.target.value.split(':')
             setDraftFilters(current => ({
@@ -699,29 +724,29 @@ function CampaignResultsTab({ executionId }: { executionId: string }) {
               order: order as CampaignExecutionResultsQuery['order']
             }))
           }} value={`${draftFilters.sort_by}:${draftFilters.order}`}>
-            <option value="ranking_score:desc">Ranking Score</option>
-            <option value="match_score:desc">Match Score</option>
-            <option value="company:asc">Company</option>
-            <option value="collected_at:desc">Collected At</option>
+            <option value="ranking_score:desc">{t('agentExecutions.rankingScore')}</option>
+            <option value="match_score:desc">{t('agentExecutions.matchScore')}</option>
+            <option value="company:asc">{t('opportunityInbox.company')}</option>
+            <option value="collected_at:desc">{t('agentExecutions.collectedAt')}</option>
           </select>
           <div className="flex flex-wrap gap-2 md:col-span-6">
-            <button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" type="submit">Apply filters</button>
-            <button className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={clearFilters} type="button">Clear</button>
+            <button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" type="submit">{t('opportunityRepository.applyFilters')}</button>
+            <button className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={clearFilters} type="button">{t('opportunityRepository.clear')}</button>
           </div>
         </form>
       </SearchToolbar>
 
-      {loading && <LoadingState title="Loading campaign results" message="Fetching persisted campaign results from the Career Scout API." />}
-      {!loading && error && <ErrorState title="Campaign Results is unavailable" message={error} action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>Try again</button>} />}
+      {loading && <LoadingState title={t('agentExecutions.loadingCampaignResults')} message={t('agentExecutions.loadingCampaignResultsDescription')} />}
+      {!loading && error && <ErrorState title={t('agentExecutions.campaignResultsUnavailable')} message={error} action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>{t('home.tryAgain')}</button>} />}
 
       {!loading && !error && results && (
         <>
           <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Campaign Status" value={readable(results.summary.execution_status)} tone={statusTone(results.summary.execution_status)} />
-            <StatCard label="Duration" value={formatDuration(results.summary.duration)} tone="blue" />
-            <StatCard label="Jobs Found" value={results.discovery.unique_jobs_found} />
-            <StatCard label="Jobs Matched" value={results.match.jobs_processed} />
-            <StatCard label="Jobs Ranked" value={results.ranking.jobs_ranked} />
+            <StatCard label={t('agentExecutions.campaignStatus')} value={readable(results.summary.execution_status)} tone={statusTone(results.summary.execution_status)} />
+            <StatCard label={t('agentExecutions.duration')} value={formatDuration(results.summary.duration)} tone="blue" />
+            <StatCard label={t('agentExecutions.jobsFound')} value={results.discovery.unique_jobs_found} />
+            <StatCard label={t('agentExecutions.jobsMatched')} value={results.match.jobs_processed} />
+            <StatCard label={t('agentExecutions.jobsRanked')} value={results.ranking.jobs_ranked} />
             <StatCard label="APPLY" value={results.decision.apply_count} tone="emerald" />
             <StatCard label="DEFER" value={results.decision.defer_count} tone="amber" />
             <StatCard label="DO NOT APPLY" value={results.decision.do_not_apply_count} tone="red" />
@@ -731,45 +756,45 @@ function CampaignResultsTab({ executionId }: { executionId: string }) {
             <SectionCard>
               <div className="mb-4">
                 <h3 className="text-lg font-extrabold text-agent-primary">Discovery</h3>
-                <p className="text-sm text-slate-500">Discovery totals returned by the Campaign Results API.</p>
+                <p className="text-sm text-slate-500">{t('agentExecutions.discoveryTotalsDescription')}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <StatCard label="Raw Jobs" value={results.discovery.raw_jobs_found} className="rounded-xl px-4 py-3" />
-                <StatCard label="Unique Jobs" value={results.discovery.unique_jobs_found} className="rounded-xl px-4 py-3" />
-                <StatCard label="Discarded Jobs" value={results.discovery.discarded_jobs} tone="amber" className="rounded-xl px-4 py-3" />
-                <StatCard label="Discovery Duration" value={formatDuration(results.discovery.discovery_duration === null ? null : results.discovery.discovery_duration / 1000)} tone="blue" className="rounded-xl px-4 py-3" />
+                <StatCard label={t('agentExecutions.rawJobs')} value={results.discovery.raw_jobs_found} className="rounded-xl px-4 py-3" />
+                <StatCard label={t('agentExecutions.uniqueJobs')} value={results.discovery.unique_jobs_found} className="rounded-xl px-4 py-3" />
+                <StatCard label={t('agentExecutions.discardedJobs')} value={results.discovery.discarded_jobs} tone="amber" className="rounded-xl px-4 py-3" />
+                <StatCard label={t('agentExecutions.discoveryDuration')} value={formatDuration(results.discovery.discovery_duration === null ? null : results.discovery.discovery_duration / 1000)} tone="blue" className="rounded-xl px-4 py-3" />
               </div>
             </SectionCard>
 
             <SectionCard>
               <div className="mb-4">
                 <h3 className="text-lg font-extrabold text-agent-primary">Match</h3>
-                <p className="text-sm text-slate-500">Match score distribution for processed jobs.</p>
+                <p className="text-sm text-slate-500">{t('agentExecutions.matchDistributionDescription')}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
-                <StatCard label="Average Match" value={formatScore(results.match.average_match_score)} tone="blue" className="rounded-xl px-4 py-3" />
-                <StatCard label="Highest Match" value={formatScore(results.match.highest_match_score)} tone="emerald" className="rounded-xl px-4 py-3" />
-                <StatCard label="Lowest Match" value={formatScore(results.match.lowest_match_score)} tone="amber" className="rounded-xl px-4 py-3" />
+                <StatCard label={t('agentExecutions.averageMatch')} value={formatScore(results.match.average_match_score)} tone="blue" className="rounded-xl px-4 py-3" />
+                <StatCard label={t('agentExecutions.highestMatch')} value={formatScore(results.match.highest_match_score)} tone="emerald" className="rounded-xl px-4 py-3" />
+                <StatCard label={t('agentExecutions.lowestMatch')} value={formatScore(results.match.lowest_match_score)} tone="amber" className="rounded-xl px-4 py-3" />
               </div>
             </SectionCard>
 
             <SectionCard>
               <div className="mb-4">
                 <h3 className="text-lg font-extrabold text-agent-primary">Ranking</h3>
-                <p className="text-sm text-slate-500">Ranking output produced for the execution.</p>
+                <p className="text-sm text-slate-500">{t('agentExecutions.rankingOutputDescription')}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <StatCard label="Jobs Ranked" value={results.ranking.jobs_ranked} className="rounded-xl px-4 py-3" />
-                <StatCard label="Top Score" value={formatScore(results.ranking.top_score)} tone="emerald" className="rounded-xl px-4 py-3" />
-                <StatCard label="Average Score" value={formatScore(results.ranking.average_score)} tone="blue" className="rounded-xl px-4 py-3" />
-                <StatCard label="Lowest Score" value={formatScore(results.ranking.lowest_score)} tone="amber" className="rounded-xl px-4 py-3" />
+                <StatCard label={t('agentExecutions.jobsRanked')} value={results.ranking.jobs_ranked} className="rounded-xl px-4 py-3" />
+                <StatCard label={t('agentExecutions.topScore')} value={formatScore(results.ranking.top_score)} tone="emerald" className="rounded-xl px-4 py-3" />
+                <StatCard label={t('agentExecutions.averageScore')} value={formatScore(results.ranking.average_score)} tone="blue" className="rounded-xl px-4 py-3" />
+                <StatCard label={t('agentExecutions.lowestScore')} value={formatScore(results.ranking.lowest_score)} tone="amber" className="rounded-xl px-4 py-3" />
               </div>
             </SectionCard>
 
             <SectionCard>
               <div className="mb-4">
                 <h3 className="text-lg font-extrabold text-agent-primary">Decision</h3>
-                <p className="text-sm text-slate-500">Decision counts available for Dashboard review.</p>
+                <p className="text-sm text-slate-500">{t('agentExecutions.decisionCountsDescription')}</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
                 <StatCard label="APPLY" value={results.decision.apply_count} tone="emerald" className="rounded-xl px-4 py-3" />
@@ -782,28 +807,28 @@ function CampaignResultsTab({ executionId }: { executionId: string }) {
           <SectionCard className="overflow-hidden rounded-2xl border-slate-200" padded={false}>
             <div className="flex flex-col gap-2 border-b border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h3 className="text-lg font-extrabold text-agent-primary">Opportunities</h3>
-                <p className="text-sm text-slate-500">Complete paginated campaign opportunity results.</p>
+                <h3 className="text-lg font-extrabold text-agent-primary">{t('agentExecutions.opportunities')}</h3>
+                <p className="text-sm text-slate-500">{t('agentExecutions.opportunitiesDescription')}</p>
               </div>
-              <StatusBadge>{total} total</StatusBadge>
+              <StatusBadge>{t('agentExecutions.totalCount').replace('{count}', String(total))}</StatusBadge>
             </div>
             {opportunities.length === 0 ? (
-              <EmptyState title="No campaign opportunities found" message="No persisted opportunities match the current Campaign Results filters." />
+              <EmptyState title={t('agentExecutions.noCampaignOpportunities')} message={t('agentExecutions.noCampaignOpportunitiesDescription')} />
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-slate-100 text-sm">
                   <thead className="bg-slate-50 text-left text-[11px] font-bold uppercase tracking-wide text-slate-500">
                     <tr>
-                      <th className="px-4 py-3">Title</th>
-                      <th className="px-4 py-3">Company</th>
-                      <th className="px-4 py-3">Location</th>
-                      <th className="px-4 py-3 text-right">Match Score</th>
-                      <th className="px-4 py-3 text-right">Ranking Score</th>
-                      <th className="px-4 py-3">Decision</th>
-                      <th className="px-4 py-3">Recommendation</th>
-                      <th className="px-4 py-3">Source</th>
-                      <th className="px-4 py-3">Collected At</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
+                      <th className="px-4 py-3">{t('agentExecutions.titleColumn')}</th>
+                      <th className="px-4 py-3">{t('opportunityInbox.company')}</th>
+                      <th className="px-4 py-3">{t('discoverySources.location')}</th>
+                      <th className="px-4 py-3 text-right">{t('agentExecutions.matchScore')}</th>
+                      <th className="px-4 py-3 text-right">{t('agentExecutions.rankingScore')}</th>
+                      <th className="px-4 py-3">{t('agentExecutions.decision')}</th>
+                      <th className="px-4 py-3">{t('agentExecutions.recommendation')}</th>
+                      <th className="px-4 py-3">{t('agentExecutions.source')}</th>
+                      <th className="px-4 py-3">{t('agentExecutions.collectedAt')}</th>
+                      <th className="px-4 py-3 text-right">{t('admin.actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -818,11 +843,11 @@ function CampaignResultsTab({ executionId }: { executionId: string }) {
 
           <FilterBar className="justify-between">
             <span className="px-2 text-xs font-medium text-slate-500">
-              Showing {total === 0 ? 0 : offset + 1}-{Math.min(offset + returned, total)} of {total}
+              {t('agentExecutions.showingOf').replace('{from}', String(total === 0 ? 0 : offset + 1)).replace('{to}', String(Math.min(offset + returned, total))).replace('{total}', String(total))}
             </span>
             <div className="flex gap-2">
-              <button className="rounded-lg px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30" disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - RESULTS_PAGE_SIZE))} type="button">Previous</button>
-              <button className="rounded-lg px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30" disabled={offset + returned >= total} onClick={() => setOffset(value => value + RESULTS_PAGE_SIZE)} type="button">Next</button>
+              <button className="rounded-lg px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30" disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - RESULTS_PAGE_SIZE))} type="button">{t('agentExecutions.previous')}</button>
+              <button className="rounded-lg px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30" disabled={offset + returned >= total} onClick={() => setOffset(value => value + RESULTS_PAGE_SIZE)} type="button">{t('agentExecutions.next')}</button>
             </div>
           </FilterBar>
         </>
@@ -865,9 +890,12 @@ function CampaignResultOpportunityRow({ opportunity, onCopyUrl }: { opportunity:
 
 function ExecutionTable() {
   const { t } = useLanguage()
+  const [searchParams] = useSearchParams()
+  const queryFilter = searchParams.get('q') ?? ''
+  const initialQueryFilters = queryFilter ? { ...initialFilters, q: queryFilter } : initialFilters
   const [executions, setExecutions] = useState<AgentExecutionSummary[]>([])
-  const [draftFilters, setDraftFilters] = useState<AgentExecutionQuery>(initialFilters)
-  const [filters, setFilters] = useState<AgentExecutionQuery>(initialFilters)
+  const [draftFilters, setDraftFilters] = useState<AgentExecutionQuery>(initialQueryFilters)
+  const [filters, setFilters] = useState<AgentExecutionQuery>(initialQueryFilters)
   const [offset, setOffset] = useState(0)
   const [returned, setReturned] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -1001,11 +1029,17 @@ function ExecutionTable() {
 function ExecutionDetailPage({ executionId }: { executionId: string }) {
   const { t } = useLanguage()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const requestedSection = searchParams.get('section')?.trim()
   const [detail, setDetail] = useState<AgentExecutionDetail | null>(null)
   const [progress, setProgress] = useState<CampaignExecutionProgress | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeSection, setActiveSection] = useState('summary')
+  const [activeSection, setActiveSection] = useState(requestedSection || 'summary')
+
+  useEffect(() => {
+    if (requestedSection) setActiveSection(requestedSection)
+  }, [requestedSection])
 
   useEffect(() => {
     let active = true
@@ -1076,6 +1110,7 @@ function ExecutionDetailPage({ executionId }: { executionId: string }) {
   if (!detail) return <EmptyState title={t('agentExecutions.notFoundTitle')} message={t('agentExecutions.notFoundDescription')} />
 
   const summary = detail.summary
+  const displayedProgress = summaryProgressPercentage(summary, progress)
   const endToEndMetrics = executionMetrics(detail)
   const sections = [
     ['summary', t('agentExecutions.summary')],
@@ -1134,7 +1169,7 @@ function ExecutionDetailPage({ executionId }: { executionId: string }) {
         <StatCard label="APPLY" value={summary.apply_count} tone="emerald" className="rounded-xl px-4 py-3" />
         <StatCard label="CONSIDER" value={summary.consider_count} tone="amber" className="rounded-xl px-4 py-3" />
         <StatCard label="DO_NOT_APPLY" value={summary.do_not_apply_count} tone="red" className="rounded-xl px-4 py-3" />
-        <StatCard label={t('agentExecutions.progress')} value={`${Math.round(summary.progress)}%`} className="rounded-xl px-4 py-3" />
+        <StatCard label={t('agentExecutions.progress')} value={`${displayedProgress}%`} className="rounded-xl px-4 py-3" />
       </section>
 
       {progress && <ExecutionProgressPanel progress={progress} />}

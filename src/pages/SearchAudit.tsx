@@ -10,6 +10,7 @@ import {
   StatCard,
   StatusBadge
 } from '../components/design-system'
+import { useLanguage } from '../i18n/LanguageProvider'
 import {
   Campaign,
   listCampaigns,
@@ -26,9 +27,9 @@ function formatDate(value: string) {
   }).format(new Date(value))
 }
 
-function formatDuration(seconds: number | null) {
-  if (seconds === null) return 'Not available'
-  return seconds < 60 ? `${seconds.toFixed(1)} sec` : `${Math.floor(seconds / 60)} min ${Math.round(seconds % 60)} sec`
+function formatDuration(seconds: number | null, notAvailable: string, secondLabel: string, minuteLabel: string) {
+  if (seconds === null) return notAvailable
+  return seconds < 60 ? `${seconds.toFixed(1)} ${secondLabel}` : `${Math.floor(seconds / 60)} ${minuteLabel} ${Math.round(seconds % 60)} ${secondLabel}`
 }
 
 function conversionClass(rate: number) {
@@ -49,11 +50,12 @@ function executionTone(status: string): 'emerald' | 'red' | 'slate' {
   return 'slate'
 }
 
-function readableFamily(value: string | null) {
-  return (value ?? 'Unclassified').replaceAll('_', ' ')
+function readableFamily(value: string | null, unclassified: string) {
+  return (value ?? unclassified).replaceAll('_', ' ')
 }
 
 export default function SearchAudit() {
+  const { t } = useLanguage()
   const [audits, setAudits] = useState<SearchAuditRecord[]>([])
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
   const [filters, setFilters] = useState<SearchAuditQuery>({
@@ -99,44 +101,44 @@ export default function SearchAudit() {
   return (
     <PageContainer className="space-y-4">
       <PageHeader
-        eyebrow="Engineering workspace"
-        title="LinkedIn discovery audit"
-        description="Compare search strategy performance without affecting agent decisions."
-        actions={<StatusBadge>{returned} attempts on this page</StatusBadge>}
+        eyebrow={t('searchAudit.eyebrow')}
+        title={t('searchAudit.title')}
+        description={t('searchAudit.description')}
+        actions={<StatusBadge>{t('searchAudit.attemptsOnPage').replace('{count}', String(returned))}</StatusBadge>}
       />
       <FilterBar className="grid gap-3 bg-slate-50/70 px-5 py-4 sm:px-6 md:grid-cols-3">
           <label className="space-y-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Search family</span>
-            <select aria-label="Filter search family" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-50" onChange={event => updateFilter('search_family', event.target.value)} value={filters.search_family}>
-              <option value="">All search families</option><option value="SDET">SDET</option><option value="QA_AUTOMATION">QA Automation</option><option value="QUALITY_ENGINEERING">Quality Engineering</option><option value="TEST_ENGINEERING">Test Engineering</option>
+            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{t('opportunityRepository.searchFamily')}</span>
+            <select aria-label={t('opportunityRepository.filterSearchFamilyAria')} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-50" onChange={event => updateFilter('search_family', event.target.value)} value={filters.search_family}>
+              <option value="">{t('opportunityRepository.allSearchFamilies')}</option><option value="SDET">SDET</option><option value="QA_AUTOMATION">QA Automation</option><option value="QUALITY_ENGINEERING">Quality Engineering</option><option value="TEST_ENGINEERING">Test Engineering</option>
             </select>
           </label>
           <label className="space-y-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Campaign</span>
-            <select aria-label="Filter campaign" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-50" onChange={event => updateFilter('campaign_id', event.target.value)} value={filters.campaign_id}>
-              <option value="">All campaigns</option>
-              {campaigns.map(campaign => <option key={campaign.campaign_id} value={campaign.campaign_id}>{formatDate(campaign.campaign_date)} · {campaign.campaign_id.slice(0, 8)}</option>)}
+            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{t('agentExecutions.campaign')}</span>
+            <select aria-label={t('opportunityRepository.filterCampaignAria')} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-50" onChange={event => updateFilter('campaign_id', event.target.value)} value={filters.campaign_id}>
+              <option value="">{t('opportunityRepository.allCampaigns')}</option>
+              {campaigns.map(campaign => <option key={campaign.campaign_id} value={campaign.campaign_id}>{formatDate(campaign.campaign_date)} - {campaign.campaign_id.slice(0, 8)}</option>)}
             </select>
           </label>
           <label className="space-y-1.5">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Sort by</span>
-            <select aria-label="Sort search audits" className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-50" onChange={event => {
+            <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{t('searchAudit.sortBy')}</span>
+            <select aria-label={t('searchAudit.sortAria')} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-50" onChange={event => {
               const [sort_by, order] = event.target.value.split(':')
               setOffset(0)
               setFilters(current => ({ ...current, sort_by: sort_by as SearchAuditQuery['sort_by'], order: order as SearchAuditQuery['order'] }))
             }} value={`${filters.sort_by}:${filters.order}`}>
-              <option value="campaign_date:desc">Execution date · newest</option><option value="campaign_date:asc">Execution date · oldest</option><option value="conversion_rate:desc">Conversion · highest</option><option value="conversion_rate:asc">Conversion · lowest</option><option value="jobs_collected:desc">Jobs collected · highest</option><option value="jobs_collected:asc">Jobs collected · lowest</option>
+              <option value="campaign_date:desc">{t('searchAudit.sortExecutionNewest')}</option><option value="campaign_date:asc">{t('searchAudit.sortExecutionOldest')}</option><option value="conversion_rate:desc">{t('searchAudit.sortConversionHighest')}</option><option value="conversion_rate:asc">{t('searchAudit.sortConversionLowest')}</option><option value="jobs_collected:desc">{t('searchAudit.sortJobsHighest')}</option><option value="jobs_collected:asc">{t('searchAudit.sortJobsLowest')}</option>
             </select>
           </label>
       </FilterBar>
 
-      {loading && <LoadingState title="Loading search audit" message="Fetching persisted search attempts from the Career Scout API." />}
-      {!loading && error && <ErrorState title="Search Audit is unavailable" message={error} action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>Try again</button>} />}
-      {!loading && !error && audits.length === 0 && <EmptyState title="No search attempts found" message="No persisted searches match the selected filters." />}
+      {loading && <LoadingState title={t('searchAudit.loading')} message={t('searchAudit.loadingDescription')} />}
+      {!loading && error && <ErrorState title={t('searchAudit.errorTitle')} message={error} action={<button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>{t('home.tryAgain')}</button>} />}
+      {!loading && !error && audits.length === 0 && <EmptyState title={t('searchAudit.emptyTitle')} message={t('searchAudit.emptyDescription')} />}
 
       {!loading && !error && audits.length > 0 && (
         <>
-          <div className="flex items-center justify-between px-1 text-xs font-medium text-slate-500"><span>Showing {offset + 1}–{offset + returned}</span><span>One card per search attempt</span></div>
+          <div className="flex items-center justify-between px-1 text-xs font-medium text-slate-500"><span>{t('opportunityInbox.showing').replace('{from}', String(offset + 1)).replace('{to}', String(offset + returned))}</span><span>{t('searchAudit.oneCardPerAttempt')}</span></div>
           <div className="grid gap-4 lg:grid-cols-2">
             {audits.map(audit => (
               <SectionCard className="group overflow-hidden rounded-2xl border-slate-200 p-0 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md" key={`${audit.campaign_id}:${audit.search_family}:${audit.search_keyword}`}>
@@ -144,25 +146,25 @@ export default function SearchAudit() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-md bg-indigo-50 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700">{readableFamily(audit.search_family)}</span>
+                        <span className="rounded-md bg-indigo-50 px-2 py-1 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700">{readableFamily(audit.search_family, t('searchAudit.unclassified'))}</span>
                         <StatusBadge tone={executionTone(audit.execution_status)} className="px-2 py-1 text-[10px]">{audit.execution_status}</StatusBadge>
                       </div>
                       <h3 className="mt-3 truncate text-base font-bold tracking-tight text-slate-950" title={audit.search_keyword}>{audit.search_keyword}</h3>
                     </div>
                     <div className={`shrink-0 rounded-xl border px-3 py-2 text-right ${conversionSurface(audit.conversion_rate)}`}>
                       <div className={`text-2xl font-black leading-none tabular-nums ${conversionClass(audit.conversion_rate)}`}>{audit.conversion_rate.toFixed(1)}%</div>
-                      <div className="mt-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">Conversion</div>
+                      <div className="mt-1 text-[9px] font-bold uppercase tracking-wider text-slate-500">{t('searchAudit.conversion')}</div>
                     </div>
                   </div>
 
-                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-label={`${audit.conversion_rate.toFixed(2)} percent conversion`}>
+                  <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-slate-100" aria-label={t('searchAudit.conversionPercentAria').replace('{value}', audit.conversion_rate.toFixed(2))}>
                     <div className={`h-full rounded-full ${audit.conversion_rate >= 20 ? 'bg-emerald-500' : audit.conversion_rate > 0 ? 'bg-amber-500' : 'bg-red-400'}`} style={{ width: `${Math.min(100, audit.conversion_rate)}%` }} />
                   </div>
 
                   <div className="mt-4 grid grid-cols-3 gap-2">
-                    <StatCard label="Found" value={audit.jobs_collected} className="rounded-xl px-3 py-3" />
-                    <StatCard label="Aligned" value={audit.jobs_aligned} tone="emerald" className="rounded-xl px-3 py-3" />
-                    <StatCard label="Rejected" value={audit.jobs_rejected} tone="red" className="rounded-xl px-3 py-3" />
+                    <StatCard label={t('campaignHistory.found')} value={audit.jobs_collected} className="rounded-xl px-3 py-3" />
+                    <StatCard label={t('opportunityRepository.aligned')} value={audit.jobs_aligned} tone="emerald" className="rounded-xl px-3 py-3" />
+                    <StatCard label={t('opportunityRepository.rejected')} value={audit.jobs_rejected} tone="red" className="rounded-xl px-3 py-3" />
                   </div>
                 </div>
 
@@ -170,15 +172,15 @@ export default function SearchAudit() {
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                     <div className="min-w-0 space-y-2">
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600">
-                        <span className="font-semibold text-slate-800">{formatDate(audit.campaign_date)}</span><span className="text-slate-300">•</span><span className="font-mono text-[11px]">Campaign {audit.campaign_id.slice(0, 8)}</span>
+                        <span className="font-semibold text-slate-800">{formatDate(audit.campaign_date)}</span><span className="text-slate-300">•</span><span className="font-mono text-[11px]">{t('searchAudit.campaignShort').replace('{id}', audit.campaign_id.slice(0, 8))}</span>
                       </div>
                       <div className="flex flex-wrap gap-1.5 text-[10px] font-semibold text-slate-600">
-                        <span className="rounded-md border border-slate-200 bg-white px-2 py-1">{audit.location || 'Any location'}</span><span className="rounded-md border border-slate-200 bg-white px-2 py-1">{audit.work_mode}</span><span className="rounded-md border border-slate-200 bg-white px-2 py-1">{formatDuration(audit.duration_seconds)}</span>
+                        <span className="rounded-md border border-slate-200 bg-white px-2 py-1">{audit.location || t('searchAudit.anyLocation')}</span><span className="rounded-md border border-slate-200 bg-white px-2 py-1">{audit.work_mode}</span><span className="rounded-md border border-slate-200 bg-white px-2 py-1">{formatDuration(audit.duration_seconds, t('common.notAvailable'), t('campaignHistory.seconds'), t('campaignHistory.minutes'))}</span>
                       </div>
                     </div>
                     <div className="flex shrink-0 gap-2">
-                      <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-900" onClick={() => copyUrl(audit.linkedin_search_url)} type="button">{copiedUrl === audit.linkedin_search_url ? 'Copied!' : 'Copy URL'}</button>
-                      <a className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-brand-500" href={audit.linkedin_search_url} rel="noreferrer" target="_blank">Open Search ↗</a>
+                      <button className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600 transition hover:border-slate-300 hover:text-slate-900" onClick={() => copyUrl(audit.linkedin_search_url)} type="button">{copiedUrl === audit.linkedin_search_url ? t('searchAudit.copied') : t('searchAudit.copyUrl')}</button>
+                      <a className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white transition hover:bg-brand-500" href={audit.linkedin_search_url} rel="noreferrer" target="_blank">{t('searchAudit.openSearch')}</a>
                     </div>
                   </div>
                 </div>
@@ -186,7 +188,7 @@ export default function SearchAudit() {
             ))}
           </div>
           <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-2 shadow-sm">
-            <button className="rounded-lg px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30" disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - PAGE_SIZE))}>← Previous</button><button className="rounded-lg px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30" disabled={returned < PAGE_SIZE} onClick={() => setOffset(value => value + PAGE_SIZE)}>Next →</button>
+            <button className="rounded-lg px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30" disabled={offset === 0} onClick={() => setOffset(value => Math.max(0, value - PAGE_SIZE))}>{t('agentExecutions.previous')}</button><button className="rounded-lg px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-30" disabled={returned < PAGE_SIZE} onClick={() => setOffset(value => value + PAGE_SIZE)}>{t('agentExecutions.next')}</button>
           </div>
         </>
       )}

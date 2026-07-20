@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { useLanguage } from '../i18n/LanguageProvider'
+import { supportedLocales, type Locale } from '../i18n/translationService'
 
 type LoginLocationState = {
   from?: string
@@ -23,7 +24,7 @@ export default function LoginPageI18n() {
   const navigate = useNavigate()
   const location = useLocation()
   const { login, status } = useAuth()
-  const { t } = useLanguage()
+  const { locale, localeLabels, setLocale, t } = useLanguage()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -60,6 +61,10 @@ export default function LoginPageI18n() {
     }
   }
 
+  function handleLocaleChange(nextLocale: Locale) {
+    void setLocale(nextLocale)
+  }
+
   return (
     <main className="min-h-screen bg-[var(--color-bg)] px-4 py-8 text-slate-900">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-6xl items-center justify-center">
@@ -94,9 +99,24 @@ export default function LoginPageI18n() {
           </section>
 
           <section className="p-6 sm:p-10">
-            <div className="mb-8">
-              <div className="text-lg font-semibold text-agent-primary">{t('app.name')}</div>
-              <div className="text-sm text-muted-text">{t('app.subtitle')}</div>
+            <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="text-lg font-semibold text-agent-primary">{t('app.name')}</div>
+                <div className="text-sm text-muted-text">{t('app.subtitle')}</div>
+              </div>
+              <label className="w-full sm:w-48">
+                <span className="sr-only">{t('common.language')}</span>
+                <select
+                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 outline-none transition focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+                  value={locale}
+                  onChange={event => handleLocaleChange(event.target.value as Locale)}
+                  aria-label={t('common.language')}
+                >
+                  {supportedLocales.map(option => (
+                    <option key={option} value={option}>{localeLabels[option]}</option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             <h2 className="text-2xl font-semibold">{t('login.title')}</h2>

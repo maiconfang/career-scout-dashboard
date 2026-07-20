@@ -8,6 +8,7 @@ import {
 import OnboardingStepper from '../components/OnboardingStepper'
 import {
   createAccessRequest,
+  rememberPublicAccessRequest,
   type CreateAccessRequestPayload
 } from '../lib/accessRequestApi'
 
@@ -47,6 +48,7 @@ export default function AccessRequestPage() {
         resume_filename: cleanOptional(form.resume_filename),
         notes: cleanOptional(form.notes)
       })
+      rememberPublicAccessRequest(created)
       setForm(emptyForm)
       navigate(`/access-request/success?id=${encodeURIComponent(created.id)}`, { replace: true })
     } catch (requestError) {

@@ -4,6 +4,7 @@ import ProtectedRoute from './auth/ProtectedRoute'
 import AdminRoute from './auth/AdminRoute'
 import MainLayout from './layouts/MainLayout'
 import { LoadingState } from './components/design-system'
+import { useLanguage } from './i18n/LanguageProvider'
 
 const DashboardHome = lazy(() => import('./pages/DashboardHome'))
 const WorkspaceDashboardPage = lazy(() => import('./pages/WorkspaceDashboardPage'))
@@ -27,9 +28,9 @@ const CandidateProfilePage = lazy(() => import('./pages/CandidateProfilePage'))
 const ResumesPage = lazy(() => import('./pages/ResumesPage'))
 const LinkedInAccountsPage = lazy(() => import('./pages/LinkedInAccountsPage'))
 const DiscoverySourcesPage = lazy(() => import('./pages/DiscoverySourcesPage'))
+const CampaignsPage = lazy(() => import('./pages/CampaignsPage'))
 const AgentExecutionsPage = lazy(() => import('./pages/AgentExecutionsPage'))
 const RunCampaignWizardPage = lazy(() => import('./pages/RunCampaignWizardPage'))
-const CampaignProfilesPage = lazy(() => import('./pages/CampaignProfilesPage'))
 const CampaignInspectorPage = lazy(() => import('./pages/CampaignInspectorPage'))
 const CampaignComparisonPage = lazy(() => import('./pages/CampaignComparisonPage'))
 const PlatformHealthPage = lazy(() => import('./pages/PlatformHealthPage'))
@@ -40,10 +41,11 @@ const ResumeOptimizationPage = lazy(() => import('./pages/ResumeOptimizationPage
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 
 function RouteLoadingState() {
+  const { t } = useLanguage()
   return (
     <LoadingState
-      title="Loading"
-      message="Preparing the requested dashboard page."
+      title={t('common.loading')}
+      message={t('common.loadingPage')}
     />
   )
 }
@@ -80,7 +82,9 @@ export default function App() {
           <Route path="/career/resume-optimization" element={<MainLayout><ResumeOptimizationPage /></MainLayout>} />
           <Route path="/career/linkedin-accounts" element={<MainLayout><LinkedInAccountsPage /></MainLayout>} />
           <Route path="/career/discovery-sources" element={<MainLayout><DiscoverySourcesPage /></MainLayout>} />
-          <Route path="/career/campaign-profiles" element={<MainLayout><CampaignProfilesPage /></MainLayout>} />
+          <Route path="/career/campaigns" element={<MainLayout><CampaignsPage /></MainLayout>} />
+          <Route path="/career/campaigns/setup" element={<MainLayout><RunCampaignWizardPage /></MainLayout>} />
+          <Route path="/career/campaign-profiles" element={<Navigate to="/career/campaigns" replace />} />
           <Route path="/account/change-password" element={<MainLayout><ChangePasswordPage /></MainLayout>} />
           <Route path="/notifications" element={<MainLayout><NotificationsPage /></MainLayout>} />
           <Route element={<AdminRoute />}>

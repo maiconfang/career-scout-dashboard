@@ -1,9 +1,12 @@
 import { FormEvent, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   getCandidateProfile,
   saveCandidateProfile,
   type CandidateProfilePayload
 } from '../lib/candidateProfileApi'
+import { listLinkedInAccounts, type LinkedInAccount } from '../lib/linkedinAccountApi'
+import { listResumes, type CandidateResume } from '../lib/resumeApi'
 import { useLanguage } from '../i18n/LanguageProvider'
 import {
   ErrorAlert,
@@ -31,6 +34,11 @@ const emptyProfile: CandidateProfilePayload = {
   linkedin_url: ''
 }
 
+function formatDate(value: string | null) {
+  if (!value) return null
+  return new Date(value).toLocaleDateString()
+}
+
 function join(values: string[]) {
   return values.join(', ')
 }
@@ -49,15 +57,30 @@ export default function CandidateProfilePage() {
   const [provinces, setProvinces] = useState('')
   const [employmentTypes, setEmploymentTypes] = useState('')
   const [languages, setLanguages] = useState('')
+  const [resumes, setResumes] = useState<CandidateResume[]>([])
+  const [linkedInAccounts, setLinkedInAccounts] = useState<LinkedInAccount[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    let active = true
     setLoading(true)
-    getCandidateProfile()
-      .then(response => {
+
+    Promise.allSettled([
+      getCandidateProfile(),
+      listResumes(true),
+      listLinkedInAccounts(true)
+    ])
+      .then(([profileResult, resumesResult, linkedInResult]) => {
+        if (!active) return
+
+        if (profileResult.status === 'rejected') {
+          throw profileResult.reason
+        }
+
+        const response = profileResult.value
         setProfile({
           current_occupation: response.current_occupation,
           desired_occupation: response.desired_occupation,
@@ -76,9 +99,20 @@ export default function CandidateProfilePage() {
         setProvinces(join(response.preferred_provinces))
         setEmploymentTypes(join(response.preferred_employment_types))
         setLanguages(join(response.preferred_languages))
+
+        setResumes(resumesResult.status === 'fulfilled' ? resumesResult.value : [])
+        setLinkedInAccounts(linkedInResult.status === 'fulfilled' ? linkedInResult.value : [])
       })
-      .catch((requestError: Error) => setError(requestError.message))
-      .finally(() => setLoading(false))
+      .catch((requestError: Error) => {
+        if (active) setError(requestError.message)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => {
+      active = false
+    }
   }, [])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -122,6 +156,9 @@ export default function CandidateProfilePage() {
     setProfile(current => ({ ...current, [field]: value }))
   }
 
+  const defaultResume = resumes.find(resume => resume.active && resume.is_default) ?? resumes.find(resume => resume.active) ?? null
+  const defaultLinkedInAccount = linkedInAccounts.find(account => account.active && account.default_account) ?? linkedInAccounts.find(account => account.active) ?? null
+
   return (
     <PageContainer className="space-y-5" size="lg">
       <PageHeader
@@ -138,8 +175,61 @@ export default function CandidateProfilePage() {
       {loading ? (
         <LoadingState title={t('candidateProfile.loading')} message={t('candidateProfile.loading')} />
       ) : (
-        <SectionCard>
-          <form className="space-y-5" onSubmit={handleSubmit}>
+        <>
+          <section className="grid gap-4 lg:grid-cols-2">
+            <SectionCard className="rounded-2xl border-slate-200">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wide text-slate-500">{t('candidateProfile.defaultResume')}</div>
+                  {defaultResume ? (
+                    <>
+                      <h3 className="mt-2 text-lg font-extrabold text-agent-primary">{defaultResume.display_name}</h3>
+                      <p className="mt-1 text-sm text-slate-600">{defaultResume.filename}</p>
+                      <p className="mt-2 text-xs font-semibold text-slate-500">
+                        {t('candidateProfile.uploaded')} {formatDate(defaultResume.updated_at ?? defaultResume.created_at) ?? t('common.notAvailable')}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="mt-2 text-lg font-extrabold text-agent-primary">{t('candidateProfile.noResumeUploaded')}</h3>
+                      <p className="mt-1 text-sm text-slate-600">{t('candidateProfile.resumeSourceDescription')}</p>
+                    </>
+                  )}
+                </div>
+                <Link className="shrink-0 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" to="/career/resumes">
+                  {defaultResume ? t('candidateProfile.manageResumes') : t('candidateProfile.uploadResume')}
+                </Link>
+              </div>
+            </SectionCard>
+
+            <SectionCard className="rounded-2xl border-slate-200">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wide text-slate-500">{t('candidateProfile.linkedin')}</div>
+                  {defaultLinkedInAccount ? (
+                    <>
+                      <h3 className="mt-2 text-lg font-extrabold text-agent-primary">{defaultLinkedInAccount.display_name}</h3>
+                      <p className="mt-1 text-sm text-slate-600">{defaultLinkedInAccount.linkedin_email}</p>
+                      <p className="mt-2 text-xs font-semibold text-slate-500">
+                        {t('candidateProfile.connectedAccount')} · {defaultLinkedInAccount.status}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="mt-2 text-lg font-extrabold text-agent-primary">{t('candidateProfile.noLinkedinConnected')}</h3>
+                      <p className="mt-1 text-sm text-slate-600">{t('candidateProfile.linkedinSourceDescription')}</p>
+                    </>
+                  )}
+                </div>
+                <Link className="shrink-0 rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" to="/career/linkedin-accounts">
+                  {defaultLinkedInAccount ? t('candidateProfile.manageLinkedinAccounts') : t('candidateProfile.connectLinkedin')}
+                </Link>
+              </div>
+            </SectionCard>
+          </section>
+
+          <SectionCard>
+            <form className="space-y-5" onSubmit={handleSubmit}>
             <FormSection>
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">{t('candidateProfile.currentOccupation')}</span>
@@ -181,14 +271,6 @@ export default function CandidateProfilePage() {
                 <span className="text-sm font-medium text-slate-700">{t('candidateProfile.preferredLanguages')}</span>
                 <input className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={languages} onChange={event => setLanguages(event.target.value)} />
               </label>
-              <label className="block md:col-span-2">
-                <span className="text-sm font-medium text-slate-700">{t('candidateProfile.linkedinUrl')}</span>
-                <input className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={profile.linkedin_url} onChange={event => update('linkedin_url', event.target.value)} />
-              </label>
-              <label className="block md:col-span-2">
-                <span className="text-sm font-medium text-slate-700">{t('candidateProfile.currentResume')}</span>
-                <textarea className="mt-2 min-h-48 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" value={profile.current_resume} onChange={event => update('current_resume', event.target.value)} />
-              </label>
             </FormSection>
 
             {message && <SuccessAlert>{message}</SuccessAlert>}
@@ -197,8 +279,9 @@ export default function CandidateProfilePage() {
             <button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60" disabled={saving} type="submit">
               {saving ? t('candidateProfile.saving') : t('candidateProfile.save')}
             </button>
-          </form>
-        </SectionCard>
+            </form>
+          </SectionCard>
+        </>
       )}
     </PageContainer>
   )

@@ -92,6 +92,14 @@ export default function Header({ onOpenCommandPalette }: HeaderProps) {
       title: t('header.discoverySources.title'),
       subtitle: t('header.discoverySources.subtitle')
     },
+    '/career/campaigns': {
+      title: t('header.campaigns.title'),
+      subtitle: t('header.campaigns.subtitle')
+    },
+    '/career/campaigns/setup': {
+      title: t('header.campaignSetup.title'),
+      subtitle: t('header.campaignSetup.subtitle')
+    },
     '/career/campaign-profiles': {
       title: t('header.campaignProfiles.title'),
       subtitle: t('header.campaignProfiles.subtitle')
@@ -121,20 +129,20 @@ export default function Header({ onOpenCommandPalette }: HeaderProps) {
       subtitle: t('header.changePassword.subtitle')
     },
     '/decision-compare': {
-      title: 'Decision Compare',
-      subtitle: 'Agent conflict, audit verdict, and decision evidence'
+      title: t('header.decisionCompare.title'),
+      subtitle: t('header.decisionCompare.subtitle')
     },
     '/skills-gap': {
-      title: 'Skills Gap',
-      subtitle: 'Capability gaps and opportunity fit'
+      title: t('header.skillsGap.title'),
+      subtitle: t('header.skillsGap.subtitle')
     },
     '/history': {
-      title: 'History',
-      subtitle: 'Agent evolution across historical runs'
+      title: t('header.history.title'),
+      subtitle: t('header.history.subtitle')
     },
     '/jobs': {
-      title: 'Jobs List',
-      subtitle: 'Collected opportunities and match context'
+      title: t('header.jobs.title'),
+      subtitle: t('header.jobs.subtitle')
     }
   }[pathname]
   const page = pathname.startsWith('/opportunities/')
@@ -155,14 +163,14 @@ export default function Header({ onOpenCommandPalette }: HeaderProps) {
           className="inline-flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700"
           type="button"
           onClick={onOpenCommandPalette}
-          aria-label="Open command palette"
-          title="Open command palette"
+          aria-label={t('commandPalette.open')}
+          title={t('commandPalette.open')}
         >
           <svg aria-hidden="true" className="h-4 w-4" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
             <circle cx="11" cy="11" r="8" />
             <path d="m21 21-4.3-4.3" />
           </svg>
-          <span className="hidden md:inline">Search</span>
+          <span className="hidden md:inline">{t('commandPalette.searchButton')}</span>
           <kbd className="hidden rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 lg:inline">
             Ctrl K
           </kbd>

@@ -11,8 +11,10 @@ import {
 } from '../components/design-system'
 import OnboardingStepper from '../components/OnboardingStepper'
 import {
-  getAccessRequest,
+  getPublicAccessRequestStatus,
+  readRememberedPublicAccessRequest,
   type AccessRequest,
+  type PublicAccessRequestStatus,
   type AccessRequestStatus
 } from '../lib/accessRequestApi'
 
@@ -43,6 +45,7 @@ export default function AccessRequestSuccessPage() {
   const [searchParams] = useSearchParams()
   const requestId = searchParams.get('id')?.trim() ?? ''
   const [accessRequest, setAccessRequest] = useState<AccessRequest | null>(null)
+  const [publicStatus, setPublicStatus] = useState<PublicAccessRequestStatus | null>(null)
   const [loading, setLoading] = useState(Boolean(requestId))
   const [error, setError] = useState<string | null>(null)
 
@@ -54,11 +57,22 @@ export default function AccessRequestSuccessPage() {
     }
 
     let active = true
+    const remembered = readRememberedPublicAccessRequest(requestId)
+    setAccessRequest(remembered)
     setLoading(true)
     setError(null)
-    getAccessRequest(requestId)
-      .then(request => {
-        if (active) setAccessRequest(request)
+    getPublicAccessRequestStatus(requestId)
+      .then(status => {
+        if (!active) return
+        setPublicStatus(status)
+        setAccessRequest(current => current ? {
+          ...current,
+          status: status.status,
+          created_at: status.created_at,
+          approved_at: status.approved_at,
+          rejected_at: status.rejected_at,
+          provisioning_duration_ms: status.provisioning_duration_ms
+        } : null)
       })
       .catch(requestError => {
         if (active) setError(requestError instanceof Error ? requestError.message : 'Unable to load this access request.')
@@ -72,7 +86,7 @@ export default function AccessRequestSuccessPage() {
     }
   }, [requestId])
 
-  const currentStatus = accessRequest?.status ?? 'PENDING'
+  const currentStatus = publicStatus?.status ?? accessRequest?.status ?? 'PENDING'
   const nextText = useMemo(() => {
     if (currentStatus === 'USER_CREATED') {
       return 'Your account has been created. Use the activation link or token provided by the administrator to activate your account.'
@@ -110,21 +124,21 @@ export default function AccessRequestSuccessPage() {
             />
           )}
 
-          {accessRequest && (
+          {(accessRequest || publicStatus) && (
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <div className="text-xs font-bold uppercase tracking-wide text-slate-500">Current Status</div>
                 <div className="mt-3">
-                  <StatusBadge tone={statusTone(accessRequest.status)}>{readable(accessRequest.status)}</StatusBadge>
+                  <StatusBadge tone={statusTone(currentStatus)}>{readable(currentStatus)}</StatusBadge>
                 </div>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <div className="text-xs font-bold uppercase tracking-wide text-slate-500">Request ID</div>
-                <div className="mt-2 break-all font-mono text-sm font-semibold text-slate-900">{accessRequest.id}</div>
+                <div className="mt-2 break-all font-mono text-sm font-semibold text-slate-900">{accessRequest?.id ?? requestId}</div>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <div className="text-xs font-bold uppercase tracking-wide text-slate-500">Submitted At</div>
-                <div className="mt-2 text-sm font-semibold text-slate-900">{formatDateTime(accessRequest.created_at)}</div>
+                <div className="mt-2 text-sm font-semibold text-slate-900">{formatDateTime(accessRequest?.created_at ?? publicStatus?.created_at)}</div>
               </div>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <div className="text-xs font-bold uppercase tracking-wide text-slate-500">What happens now</div>

@@ -1,4 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   AuthApiError,
   blockAdminUser,
@@ -402,6 +403,10 @@ function InviteUserModal({
 }
 
 export default function AdminUsersPage() {
+  const [searchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab')
+  const requestedUserId = searchParams.get('userId')?.trim() ?? ''
+  const requestedInvitationId = searchParams.get('invitationId')?.trim() ?? ''
   const [activeTab, setActiveTab] = useState<TabKey>('USERS')
   const [users, setUsers] = useState<PlatformUser[]>([])
   const [invitations, setInvitations] = useState<UserInvitation[]>([])
@@ -446,6 +451,31 @@ export default function AdminUsersPage() {
   useEffect(() => {
     void loadData()
   }, [])
+
+  useEffect(() => {
+    if (requestedTab === 'INVITATIONS' || requestedInvitationId) {
+      setActiveTab('INVITATIONS')
+    }
+  }, [requestedInvitationId, requestedTab])
+
+  useEffect(() => {
+    if (requestedUserId) {
+      const user = users.find(item => item.user_id === requestedUserId)
+      if (user) {
+        setActiveTab('USERS')
+        setSelectedUser(user)
+      }
+    }
+  }, [requestedUserId, users])
+
+  useEffect(() => {
+    if (requestedInvitationId) {
+      const invitation = invitations.find(item => item.id === requestedInvitationId)
+      if (invitation) {
+        setSelectedInvitation(invitation)
+      }
+    }
+  }, [invitations, requestedInvitationId])
 
   const userInvitation = useMemo(() => latestInvitationByUserId(invitations), [invitations])
 

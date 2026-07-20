@@ -188,8 +188,8 @@ export default function WorkspaceDashboardPage() {
       { label: 'Candidate Profile', ready: candidateProfileReady, path: '/career/candidate-profile' },
       { label: 'Resume', ready: resumeReady, path: '/career/resumes' },
       { label: 'LinkedIn', ready: linkedInReady, path: '/career/linkedin-accounts' },
-      { label: 'Campaign Profile', ready: campaignProfileReady, path: '/career/campaign-profiles' },
-      { label: 'Ready to Run Campaign', ready: candidateProfileReady && resumeReady && linkedInReady && campaignProfileReady, path: '/career/campaign-profiles' }
+      { label: 'Campaign', ready: campaignProfileReady, path: '/career/campaigns' },
+      { label: 'Ready to Run Campaign', ready: candidateProfileReady && resumeReady && linkedInReady && campaignProfileReady, path: '/career/campaigns' }
     ]
   }, [data])
 
@@ -242,8 +242,8 @@ export default function WorkspaceDashboardPage() {
             <Link className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" to="/notifications">
               Open Notifications
             </Link>
-            <Link className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" to="/career/campaign-profiles">
-              Campaign Profiles
+            <Link className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" to="/career/campaigns">
+              Campaigns
             </Link>
           </PageActions>
         )}
@@ -275,7 +275,7 @@ export default function WorkspaceDashboardPage() {
                 className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
               />
             ) : (
-              <Link className="rounded-lg bg-brand-500 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-brand-700" to="/career/campaign-profiles">
+              <Link className="rounded-lg bg-brand-500 px-4 py-2 text-center text-sm font-semibold text-white hover:bg-brand-700" to="/career/campaigns">
                 Run Campaign
               </Link>
             )}
@@ -297,7 +297,7 @@ export default function WorkspaceDashboardPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Total Campaigns" value={data.campaignProfiles.length} subtitle="Loaded campaign profiles" tone="blue" />
+        <StatCard label="Total Campaigns" value={data.campaignProfiles.length} subtitle="Loaded Campaigns" tone="blue" />
         <StatCard label="Total Executions" value={data.executions.length} subtitle="Recent execution records" tone="violet" />
         <StatCard label="Total Notifications" value={data.notifications.length} subtitle="Recent notifications" tone="amber" />
         <StatCard label="Average Match" value={averageMatch === null ? NOT_AVAILABLE : `${readable(averageMatch)}%`} subtitle="Candidate intelligence" tone="emerald" />
@@ -319,7 +319,7 @@ export default function WorkspaceDashboardPage() {
               <div>Updated {formatDate(latestCampaign.updated_at ?? latestCampaign.created_at)}</div>
             </div>
           ) : (
-            <EmptyState title="No campaign" message="No Campaign Profile was returned by the API." />
+            <EmptyState title="No Campaign" message="No Campaign was returned by the API." />
           )}
         </InfoCard>
 

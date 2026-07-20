@@ -31,7 +31,6 @@ export default function Sidebar() {
           {t('nav.agent')}
         </div>
         <nav className="space-y-2">
-          <NavLink to="/agent/run-campaign" className={navClass}>{t('nav.runCampaignWizard')}</NavLink>
           <NavLink to="/agent/executions" className={navClass}>{t('nav.agentExecutions')}</NavLink>
           <NavLink to="/agent/campaign-inspector" className={navClass}>{t('nav.campaignInspector')}</NavLink>
           <NavLink to="/agent/campaign-comparison" className={navClass}>{t('nav.campaignComparison')}</NavLink>
@@ -58,7 +57,7 @@ export default function Sidebar() {
           <NavLink to="/career/resume-optimization" className={navClass}>{t('nav.resumeOptimization')}</NavLink>
           <NavLink to="/career/linkedin-accounts" className={navClass}>{t('nav.linkedinAccounts')}</NavLink>
           <NavLink to="/career/discovery-sources" className={navClass}>{t('nav.discoverySources')}</NavLink>
-          <NavLink to="/career/campaign-profiles" className={navClass}>{t('nav.campaignProfiles')}</NavLink>
+          <NavLink to="/career/campaigns" className={navClass}>{t('nav.campaigns')}</NavLink>
         </nav>
       </div>
 

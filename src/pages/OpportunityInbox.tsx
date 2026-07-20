@@ -12,6 +12,7 @@ import {
   SectionCard,
   StatusBadge
 } from '../components/design-system'
+import { useLanguage } from '../i18n/LanguageProvider'
 import {
   listOpportunities,
   Opportunity,
@@ -34,8 +35,8 @@ function formatScore(value: number) {
   }).format(value)
 }
 
-function readable(value?: string | null) {
-  if (!value) return 'Not available'
+function readable(value: string | null | undefined, notAvailable: string) {
+  if (!value) return notAvailable
   return value.replace(/_/g, ' ').replace(/\//g, ' / ').toLowerCase()
     .replace(/\b\w/g, character => character.toUpperCase())
 }
@@ -47,6 +48,7 @@ function confidenceTone(confidence?: string | null): 'emerald' | 'amber' | 'slat
 }
 
 export default function OpportunityInbox() {
+  const { t } = useLanguage()
   const [opportunities, setOpportunities] = useState<Opportunity[]>([])
   const [draftQuery, setDraftQuery] = useState('')
   const [query, setQuery] = useState('')
@@ -130,83 +132,83 @@ export default function OpportunityInbox() {
       <section className="rounded-xl border border-slate-100 bg-white p-5 shadow-card">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">Opportunity Inbox</div>
-            <h2 className="mt-1 text-2xl font-extrabold text-agent-primary">Official recommendation queue</h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">Every card is a traceable Recommended Set decision. Recommendation is the verdict; match score is supporting evidence, not a pass/fail percentage.</p>
+            <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">{t('opportunityInbox.eyebrow')}</div>
+            <h2 className="mt-1 text-2xl font-extrabold text-agent-primary">{t('opportunityInbox.title')}</h2>
+            <p className="mt-2 max-w-2xl text-sm text-slate-600">{t('opportunityInbox.description')}</p>
           </div>
-          <div className="rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700">Recommended Set · one card per opportunity</div>
+          <div className="rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-700">{t('opportunityInbox.recommendedSet')}</div>
         </div>
 
         <SearchToolbar className="mt-5 border-t border-slate-100 pt-4 shadow-none">
           <form className="w-full space-y-3" onSubmit={submitSearch}>
           <FormSection className="sm:grid-cols-2 lg:grid-cols-4">
             <input
-              aria-label="Search opportunities"
+              aria-label={t('opportunityInbox.searchAria')}
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500 lg:col-span-2"
               onChange={event => setDraftQuery(event.target.value)}
-              placeholder="Search title, company, description"
+              placeholder={t('opportunityInbox.searchPlaceholder')}
               value={draftQuery}
             />
             <select
-              aria-label="Filter by recommendation"
+              aria-label={t('opportunityInbox.filterRecommendationAria')}
               className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
               onChange={event => { setOffset(0); setRecommendation(event.target.value) }}
               value={recommendation}
             >
-              <option value="">All recommendations</option>
-              <option value="APPLY">Apply</option>
-              <option value="CONSIDER">Consider</option>
-              <option value="DO_NOT_APPLY">Do not apply</option>
+              <option value="">{t('opportunityInbox.allRecommendations')}</option>
+              <option value="APPLY">{t('opportunityStatus.apply')}</option>
+              <option value="CONSIDER">{t('opportunityStatus.consider')}</option>
+              <option value="DO_NOT_APPLY">{t('opportunityStatus.doNotApply')}</option>
             </select>
-            <select aria-label="Filter by confidence" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" onChange={event => { setOffset(0); setConfidence(event.target.value) }} value={confidence}>
-              <option value="">All confidence levels</option><option value="HIGH">High confidence</option><option value="MEDIUM">Medium confidence</option><option value="LOW">Low confidence</option>
+            <select aria-label={t('opportunityInbox.filterConfidenceAria')} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" onChange={event => { setOffset(0); setConfidence(event.target.value) }} value={confidence}>
+              <option value="">{t('opportunityInbox.allConfidenceLevels')}</option><option value="HIGH">{t('opportunityInbox.highConfidence')}</option><option value="MEDIUM">{t('opportunityInbox.mediumConfidence')}</option><option value="LOW">{t('opportunityInbox.lowConfidence')}</option>
             </select>
-            <input aria-label="Filter by occupation type" className="rounded-lg border border-slate-200 px-3 py-2 text-sm" onChange={event => { setOffset(0); setOccupationType(event.target.value) }} placeholder="Occupation type" value={occupationType} />
-            <select aria-label="Filter by compatibility" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" onChange={event => { setOffset(0); setCompatibility(event.target.value) }} value={compatibility}>
-              <option value="">All compatibility</option><option value="EXACT">Exact</option><option value="COMPATIBLE">Compatible</option><option value="ADJACENT">Adjacent</option><option value="AMBIGUOUS">Ambiguous</option>
+            <input aria-label={t('opportunityInbox.filterOccupationTypeAria')} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" onChange={event => { setOffset(0); setOccupationType(event.target.value) }} placeholder={t('opportunityInbox.occupationType')} value={occupationType} />
+            <select aria-label={t('opportunityInbox.filterCompatibilityAria')} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" onChange={event => { setOffset(0); setCompatibility(event.target.value) }} value={compatibility}>
+              <option value="">{t('opportunityInbox.allCompatibility')}</option><option value="EXACT">{t('opportunityInbox.exact')}</option><option value="COMPATIBLE">{t('opportunityInbox.compatible')}</option><option value="ADJACENT">{t('opportunityInbox.adjacent')}</option><option value="AMBIGUOUS">{t('opportunityInbox.ambiguous')}</option>
             </select>
-            <input aria-label="Filter by company" className="rounded-lg border border-slate-200 px-3 py-2 text-sm" onChange={event => { setOffset(0); setCompany(event.target.value) }} placeholder="Company" value={company} />
-            <select aria-label="Filter by work mode" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" onChange={event => { setOffset(0); setWorkMode(event.target.value) }} value={workMode}>
-              <option value="">All work modes</option><option value="REMOTE">Remote</option><option value="HYBRID">Hybrid</option><option value="ONSITE">Onsite</option>
+            <input aria-label={t('opportunityInbox.filterCompanyAria')} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" onChange={event => { setOffset(0); setCompany(event.target.value) }} placeholder={t('opportunityInbox.company')} value={company} />
+            <select aria-label={t('opportunityInbox.filterWorkModeAria')} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" onChange={event => { setOffset(0); setWorkMode(event.target.value) }} value={workMode}>
+              <option value="">{t('opportunityInbox.allWorkModes')}</option><option value="REMOTE">{t('opportunityInbox.remote')}</option><option value="HYBRID">{t('opportunityInbox.hybrid')}</option><option value="ONSITE">{t('opportunityInbox.onsite')}</option>
             </select>
-            <input aria-label="Minimum match score" className="rounded-lg border border-slate-200 px-3 py-2 text-sm" max="100" min="0" onChange={event => { setOffset(0); setMinMatchScore(event.target.value) }} placeholder="Minimum match score" step="0.1" type="number" value={minMatchScore} />
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-500">Posted from<input aria-label="Posted from" className="min-w-0 flex-1 text-sm text-slate-700 outline-none" onChange={event => { setOffset(0); setPostedFrom(event.target.value) }} type="date" value={postedFrom} /></label>
-            <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-500">Posted to<input aria-label="Posted to" className="min-w-0 flex-1 text-sm text-slate-700 outline-none" onChange={event => { setOffset(0); setPostedTo(event.target.value) }} type="date" value={postedTo} /></label>
-            <select aria-label="Sort opportunities" className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" onChange={event => { setOffset(0); setSort(event.target.value) }} value={sort}>
-              <option value="match_score:desc">Match score · highest</option><option value="recommendation:desc">Recommendation · priority</option><option value="confidence:desc">Confidence · highest</option><option value="job_posted_at:desc">Job date · newest</option><option value="ranking_position:asc">Ranking position · first</option>
+            <input aria-label={t('opportunityInbox.minimumMatchScore')} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" max="100" min="0" onChange={event => { setOffset(0); setMinMatchScore(event.target.value) }} placeholder={t('opportunityInbox.minimumMatchScore')} step="0.1" type="number" value={minMatchScore} />
+            <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-500">{t('opportunityInbox.postedFrom')}<input aria-label={t('opportunityInbox.postedFrom')} className="min-w-0 flex-1 text-sm text-slate-700 outline-none" onChange={event => { setOffset(0); setPostedFrom(event.target.value) }} type="date" value={postedFrom} /></label>
+            <label className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-500">{t('opportunityInbox.postedTo')}<input aria-label={t('opportunityInbox.postedTo')} className="min-w-0 flex-1 text-sm text-slate-700 outline-none" onChange={event => { setOffset(0); setPostedTo(event.target.value) }} type="date" value={postedTo} /></label>
+            <select aria-label={t('opportunityInbox.sortAria')} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm" onChange={event => { setOffset(0); setSort(event.target.value) }} value={sort}>
+              <option value="match_score:desc">{t('opportunityInbox.sortMatchHighest')}</option><option value="recommendation:desc">{t('opportunityInbox.sortRecommendationPriority')}</option><option value="confidence:desc">{t('opportunityInbox.sortConfidenceHighest')}</option><option value="job_posted_at:desc">{t('opportunityInbox.sortJobDateNewest')}</option><option value="ranking_position:asc">{t('opportunityInbox.sortRankingFirst')}</option>
             </select>
           </FormSection>
           <div className="flex justify-end gap-2">
-            <button className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" onClick={resetFilters} type="button">Clear filters</button>
-            <button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" type="submit">Search</button>
+            <button className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50" onClick={resetFilters} type="button">{t('opportunityInbox.clearFilters')}</button>
+            <button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700" type="submit">{t('commandPalette.searchButton')}</button>
           </div>
           </form>
         </SearchToolbar>
       </section>
 
-      {loading && <LoadingState title="Loading opportunities" message="Fetching the latest Career Scout opportunities." />}
+      {loading && <LoadingState title={t('opportunityInbox.loading')} message={t('opportunityInbox.loadingDescription')} />}
 
       {!loading && error && (
         <ErrorState
-          title="Career Scout API is unavailable"
+          title={t('opportunityInbox.errorTitle')}
           message={error}
           action={(
             <button className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white" onClick={() => setReloadKey(value => value + 1)}>
-              Try again
+              {t('home.tryAgain')}
             </button>
           )}
         />
       )}
 
       {!loading && !error && opportunities.length === 0 && (
-        <EmptyState title="No opportunities found" message="Try a different search or recommendation filter." />
+        <EmptyState title={t('opportunityInbox.emptyTitle')} message={t('opportunityInbox.emptyDescription')} />
       )}
 
       {!loading && !error && opportunities.length > 0 && (
         <>
           <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>Showing {offset + 1}–{offset + returned}</span>
-            <span>Official Recommended Set queue</span>
+            <span>{t('opportunityInbox.showing').replace('{from}', String(offset + 1)).replace('{to}', String(offset + returned))}</span>
+            <span>{t('opportunityInbox.officialQueue')}</span>
           </div>
 
           <div className="space-y-3">
@@ -220,33 +222,33 @@ export default function OpportunityInbox() {
                         <OpportunityStatusBadge status={opportunity.lifecycle_status} decision={details.decision} />
                         {details.confidence && (
                           <StatusBadge tone={confidenceTone(details.confidence)} className="font-semibold">
-                            {readable(details.confidence)} confidence
+                            {readable(details.confidence, t('common.notAvailable'))} {t('opportunityInbox.confidence')}
                           </StatusBadge>
                         )}
                         {details.matchScore !== null && (
                           <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
-                            Match evidence · {formatScore(details.matchScore)}
+                            {t('opportunityInbox.matchEvidence').replace('{score}', formatScore(details.matchScore))}
                           </span>
                         )}
                         {details.rankingPosition !== null && (
-                          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">Rank #{details.rankingPosition}</span>
+                          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600">{t('opportunityInbox.rank').replace('{position}', String(details.rankingPosition))}</span>
                         )}
                       </div>
                       <h3 className="mt-3 text-lg font-bold text-slate-950">{opportunity.title}</h3>
-                      <div className="mt-1 text-sm font-medium text-slate-700">{opportunity.company || 'Company not provided'}</div>
+                      <div className="mt-1 text-sm font-medium text-slate-700">{opportunity.company || t('opportunityInbox.companyNotProvided')}</div>
                       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
                         {opportunity.location && <span>{opportunity.location}</span>}
                         {opportunity.work_mode && <span>{opportunity.work_mode}</span>}
                         {opportunity.employment_type && <span>{opportunity.employment_type}</span>}
-                        {opportunity.job_posted_at && <span>Posted {formatDate(opportunity.job_posted_at)}</span>}
-                        <span>Updated {formatDate(opportunity.last_discovered_at)}</span>
+                        {opportunity.job_posted_at && <span>{t('opportunityInbox.posted').replace('{date}', formatDate(opportunity.job_posted_at))}</span>}
+                        <span>{t('opportunityInbox.updated').replace('{date}', formatDate(opportunity.last_discovered_at))}</span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                        {opportunity.occupation_type && <span className="rounded-md bg-indigo-50 px-2 py-1 font-medium text-indigo-700">{readable(opportunity.occupation_type)}</span>}
-                        {opportunity.occupation_compatibility && <span className="rounded-md bg-sky-50 px-2 py-1 font-medium text-sky-700">{readable(opportunity.occupation_compatibility)}</span>}
+                        {opportunity.occupation_type && <span className="rounded-md bg-indigo-50 px-2 py-1 font-medium text-indigo-700">{readable(opportunity.occupation_type, t('common.notAvailable'))}</span>}
+                        {opportunity.occupation_compatibility && <span className="rounded-md bg-sky-50 px-2 py-1 font-medium text-sky-700">{readable(opportunity.occupation_compatibility, t('common.notAvailable'))}</span>}
                       </div>
                       <p className="mt-3 line-clamp-2 text-sm text-slate-600">
-                        {details.reason ?? opportunity.description ?? 'No description was provided.'}
+                        {details.reason ?? opportunity.description ?? t('opportunityInbox.noDescription')}
                       </p>
                     </div>
 
@@ -255,7 +257,7 @@ export default function OpportunityInbox() {
                         className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
                         to={`/opportunities/${opportunity.opportunity_id}`}
                       >
-                        View details
+                        {t('campaigns.viewDetails')}
                       </Link>
                       {opportunity.job_url && (
                         <a
@@ -264,7 +266,7 @@ export default function OpportunityInbox() {
                           rel="noreferrer"
                           target="_blank"
                         >
-                          Open LinkedIn
+                          {t('opportunityInbox.openLinkedin')}
                         </a>
                       )}
                     </div>
@@ -280,14 +282,14 @@ export default function OpportunityInbox() {
               disabled={offset === 0}
               onClick={() => setOffset(value => Math.max(0, value - PAGE_SIZE))}
             >
-              Previous
+              {t('agentExecutions.previous')}
             </button>
             <button
               className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={returned < PAGE_SIZE}
               onClick={() => setOffset(value => value + PAGE_SIZE)}
             >
-              Next
+              {t('agentExecutions.next')}
             </button>
           </div>
         </>

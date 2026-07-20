@@ -6,6 +6,8 @@ export type DiscoverySource = {
   linkedin_account_id: string
   name: string
   search_url: string
+  search_keywords: string | null
+  location: string | null
   status: 'ACTIVE' | 'INACTIVE'
   active: boolean
   execution_interval_hours: number
@@ -15,8 +17,10 @@ export type DiscoverySource = {
 
 export type DiscoverySourcePayload = {
   linkedin_account_id: string
-  name: string
-  search_url: string
+  name?: string | null
+  search_url?: string | null
+  search_keywords?: string | null
+  location?: string | null
   active: boolean
   execution_interval_hours: number
 }

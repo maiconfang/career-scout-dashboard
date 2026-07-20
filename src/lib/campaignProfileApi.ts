@@ -58,6 +58,13 @@ export function createCampaignProfile(payload: CampaignProfilePayload) {
   })
 }
 
+export function updateCampaignProfile(campaignProfileId: string, payload: CampaignProfilePayload) {
+  return request<CampaignProfile>(`/api/campaign-profiles/${campaignProfileId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload)
+  })
+}
+
 export function setDefaultCampaignProfile(campaignProfileId: string) {
   return request<CampaignProfile>(`/api/campaign-profiles/${campaignProfileId}/default`, {
     method: 'POST'

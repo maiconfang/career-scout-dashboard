@@ -1,5 +1,7 @@
 import { apiRequest, get, patch } from './httpClient'
 
+const publicAccessRequestStorageKey = 'career-scout-public-access-requests'
+
 export type AccessRequestStatus = 'PENDING' | 'APPROVED' | 'USER_CREATED' | 'REJECTED'
 
 export type AccessRequest = {
@@ -21,6 +23,16 @@ export type AccessRequest = {
   activation_token_id: string | null
   provisioning_duration_ms: number | null
 }
+
+export type PublicAccessRequestStatus = Pick<
+  AccessRequest,
+  | 'id'
+  | 'status'
+  | 'created_at'
+  | 'approved_at'
+  | 'rejected_at'
+  | 'provisioning_duration_ms'
+>
 
 export type ListAccessRequestsParams = {
   status?: AccessRequestStatus | ''
@@ -47,6 +59,27 @@ export function createAccessRequest(payload: CreateAccessRequestPayload) {
   })
 }
 
+export function rememberPublicAccessRequest(accessRequest: AccessRequest) {
+  try {
+    const stored = window.localStorage.getItem(publicAccessRequestStorageKey)
+    const requests = stored ? JSON.parse(stored) as Record<string, AccessRequest> : {}
+    requests[accessRequest.id] = accessRequest
+    window.localStorage.setItem(publicAccessRequestStorageKey, JSON.stringify(requests))
+  } catch {
+    // Public status tracking remains available even when local storage is disabled.
+  }
+}
+
+export function readRememberedPublicAccessRequest(accessRequestId: string) {
+  try {
+    const stored = window.localStorage.getItem(publicAccessRequestStorageKey)
+    const requests = stored ? JSON.parse(stored) as Record<string, AccessRequest> : {}
+    return requests[accessRequestId] ?? null
+  } catch {
+    return null
+  }
+}
+
 export function listAccessRequests(params: ListAccessRequestsParams = {}) {
   return get<AccessRequest[]>('/api/access-requests', {
     status: params.status,
@@ -63,6 +96,15 @@ export function getAccessRequest(accessRequestId: string) {
     errorPrefix: 'Unable to load access request',
     notFoundMessage: 'Access request not found.',
     preferResponseDetail: true
+  })
+}
+
+export function getPublicAccessRequestStatus(accessRequestId: string) {
+  return get<PublicAccessRequestStatus>(`/api/access-requests/public/${accessRequestId}/status`, undefined, {
+    errorPrefix: 'Unable to load access request status',
+    notFoundMessage: 'Access request not found.',
+    preferResponseDetail: true,
+    skipAuthRefresh: true
   })
 }
 

@@ -7,6 +7,8 @@ import { listLinkedInAccounts } from '../lib/linkedinAccountApi'
 import { listResumes } from '../lib/resumeApi'
 import { listAgentExecutions, listNotifications, listOpportunities } from '../lib/api'
 import { runCampaign } from '../lib/campaignRunApi'
+import { useLanguage } from '../i18n/LanguageProvider'
+import type { TranslationKey } from '../i18n/translationService'
 
 type CommandPaletteProps = {
   open: boolean
@@ -27,72 +29,72 @@ type CommandResult = {
 const navigationCommands = [
   {
     id: 'open-workspace',
-    title: 'Open Workspace',
-    subtitle: 'View account readiness, quick stats, and personal insights',
+    titleKey: 'commandPalette.openWorkspace',
+    subtitleKey: 'commandPalette.openWorkspaceDescription',
     path: '/workspace'
   },
   {
-    id: 'open-run-campaign-wizard',
-    title: 'Open Run Campaign Wizard',
-    subtitle: 'Start a guided campaign run with setup validation',
-    path: '/agent/run-campaign'
+    id: 'open-campaigns',
+    titleKey: 'commandPalette.openCampaigns',
+    subtitleKey: 'commandPalette.openCampaignsDescription',
+    path: '/career/campaigns'
   },
   {
     id: 'open-notifications',
-    title: 'Open Notifications',
-    subtitle: 'View campaign, replay, and scheduler notifications',
+    titleKey: 'commandPalette.openNotifications',
+    subtitleKey: 'commandPalette.openNotificationsDescription',
     path: '/notifications'
   },
   {
     id: 'open-analytics',
-    title: 'Open Analytics',
-    subtitle: 'Review feedback and campaign analytics',
+    titleKey: 'commandPalette.openAnalytics',
+    subtitleKey: 'commandPalette.openAnalyticsDescription',
     path: '/analytics/career'
   },
   {
     id: 'open-resume-optimization',
-    title: 'Open Resume Optimization',
-    subtitle: 'Review resume coverage and skill priorities',
+    titleKey: 'commandPalette.openResumeOptimization',
+    subtitleKey: 'commandPalette.openResumeOptimizationDescription',
     path: '/career/resume-optimization'
   },
   {
     id: 'open-career-intelligence',
-    title: 'Open Career Intelligence',
-    subtitle: 'Review candidate intelligence insights',
+    titleKey: 'commandPalette.openCareerIntelligence',
+    subtitleKey: 'commandPalette.openCareerIntelligenceDescription',
     path: '/analytics/intelligence'
   },
   {
     id: 'open-platform-health',
-    title: 'Open Platform Health',
-    subtitle: 'Monitor operational platform health',
+    titleKey: 'commandPalette.openPlatformHealth',
+    subtitleKey: 'commandPalette.openPlatformHealthDescription',
     path: '/admin/platform-health'
   },
   {
     id: 'open-admin-center',
-    title: 'Open Administration Center',
-    subtitle: 'Open the administration hub',
+    titleKey: 'commandPalette.openAdminCenter',
+    subtitleKey: 'commandPalette.openAdminCenterDescription',
     path: '/admin'
   },
   {
     id: 'open-scheduler',
-    title: 'Open Scheduler',
-    subtitle: 'Open scheduler visibility in Platform Health',
+    titleKey: 'commandPalette.openScheduler',
+    subtitleKey: 'commandPalette.openSchedulerDescription',
     path: '/admin/platform-health'
   },
   {
     id: 'open-audit-log',
-    title: 'Open Audit Log',
-    subtitle: 'Open recent activity in Administration Center',
+    titleKey: 'commandPalette.openAuditLog',
+    subtitleKey: 'commandPalette.openAuditLogDescription',
     path: '/admin'
   }
-]
+] satisfies Array<{ id: string, titleKey: TranslationKey, subtitleKey: TranslationKey, path: string }>
 
 const actionCommands = [
   {
     id: 'create-campaign',
-    title: 'Create Campaign',
-    subtitle: 'Open Campaign Profiles to create a new campaign profile',
-    path: '/career/campaign-profiles'
+    titleKey: 'commandPalette.createCampaign',
+    subtitleKey: 'commandPalette.createCampaignDescription',
+    path: '/career/campaigns/setup?mode=create'
   }
 ]
 
@@ -144,6 +146,7 @@ function resultIcon(group: ResultGroup) {
 }
 
 export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
+  const { t } = useLanguage()
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
   const [query, setQuery] = useState('')
@@ -201,22 +204,22 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
               group: 'Campaigns',
               title: profile.name,
               subtitle: profile.primary_search_intent,
-              badge: profile.default_profile ? 'Default' : profile.status,
-              action: () => {
-                onClose()
-                navigate('/career/campaign-profiles')
-              }
-            })
+                badge: profile.default_profile ? t('campaigns.default') : profile.status,
+                action: () => {
+                  onClose()
+                  navigate('/career/campaigns')
+                }
+              })
           })
 
         const firstCampaign = campaignProfiles.find(profile => profile.active) ?? campaignProfiles[0]
-        if (firstCampaign && matchesQuery(query, 'run campaign', firstCampaign.name, firstCampaign.primary_search_intent)) {
+        if (firstCampaign && matchesQuery(query, t('commandPalette.runCampaign'), firstCampaign.name, firstCampaign.primary_search_intent)) {
           nextResults.push({
             id: `run-campaign-${firstCampaign.campaign_profile_id}`,
             group: 'Actions',
-            title: `Run Campaign: ${firstCampaign.name}`,
-            subtitle: 'Create a new campaign execution from this Campaign Profile',
-            badge: 'Run',
+            title: t('commandPalette.runCampaignWithName').replace('{name}', firstCampaign.name),
+            subtitle: t('commandPalette.runCampaignDescription'),
+            badge: t('commandPalette.run'),
             action: () => setCampaignToRun(firstCampaign)
           })
         }
@@ -263,7 +266,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 group: 'Navigation',
                 title: notification.title,
                 subtitle: notification.message,
-                badge: notification.is_read ? 'Read' : 'Unread',
+                badge: notification.is_read ? t('notifications.read') : t('notifications.unread'),
                 action: () => {
                   onClose()
                   navigate(notification.related_execution_id ? `/agent/executions/${notification.related_execution_id}` : '/notifications')
@@ -272,13 +275,13 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             })
         }
 
-        if (candidateProfileResult.status === 'fulfilled' && matchesQuery(query, 'candidate profile', candidateProfileResult.value.current_occupation, candidateProfileResult.value.desired_occupation)) {
+        if (candidateProfileResult.status === 'fulfilled' && matchesQuery(query, t('nav.candidateProfile'), candidateProfileResult.value.current_occupation, candidateProfileResult.value.desired_occupation)) {
           nextResults.push({
             id: 'candidate-profile',
             group: 'Navigation',
-            title: 'Candidate Profile',
+            title: t('nav.candidateProfile'),
             subtitle: [candidateProfileResult.value.current_occupation, candidateProfileResult.value.desired_occupation].filter(Boolean).join(' → '),
-            badge: candidateProfileResult.value.profile_id ? 'Profile' : undefined,
+            badge: candidateProfileResult.value.profile_id ? t('commandPalette.profile') : undefined,
             action: () => {
               onClose()
               navigate('/career/candidate-profile')
@@ -296,7 +299,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 group: 'Navigation',
                 title: resume.display_name || resume.filename,
                 subtitle: resume.filename,
-                badge: resume.is_default ? 'Default Resume' : resume.status,
+                badge: resume.is_default ? t('commandPalette.defaultResume') : resume.status,
                 action: () => {
                   onClose()
                   navigate('/career/resumes')
@@ -315,7 +318,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
                 group: 'Navigation',
                 title: account.display_name,
                 subtitle: account.linkedin_email,
-                badge: account.default_account ? 'Default LinkedIn' : account.status,
+                badge: account.default_account ? t('commandPalette.defaultLinkedin') : account.status,
                 action: () => {
                   onClose()
                   navigate('/career/linkedin-accounts')
@@ -325,13 +328,13 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
         }
 
         navigationCommands
-          .filter(command => matchesQuery(query, command.title, command.subtitle))
+          .filter(command => matchesQuery(query, t(command.titleKey), t(command.subtitleKey)))
           .forEach(command => {
             nextResults.push({
               id: command.id,
               group: command.id === 'open-admin-center' || command.id === 'open-scheduler' || command.id === 'open-audit-log' ? 'Actions' : 'Navigation',
-              title: command.title,
-              subtitle: command.subtitle,
+              title: t(command.titleKey),
+              subtitle: t(command.subtitleKey),
               action: () => {
                 onClose()
                 navigate(command.path)
@@ -340,13 +343,13 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
           })
 
         actionCommands
-          .filter(command => matchesQuery(query, command.title, command.subtitle))
+          .filter(command => matchesQuery(query, t(command.titleKey), t(command.subtitleKey)))
           .forEach(command => {
             nextResults.push({
               id: command.id,
               group: 'Actions',
-              title: command.title,
-              subtitle: command.subtitle,
+              title: t(command.titleKey),
+              subtitle: t(command.subtitleKey),
               action: () => {
                 onClose()
                 navigate(command.path)
@@ -354,17 +357,17 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             })
           })
 
-        if (!firstCampaign && matchesQuery(query, 'run campaign')) {
+        if (!firstCampaign && matchesQuery(query, t('commandPalette.runCampaign'))) {
           nextResults.push({
             id: 'run-campaign-open-profiles',
             group: 'Actions',
-            title: 'Run Campaign',
-            subtitle: 'Open Campaign Profiles to choose a campaign to run',
-            action: () => {
-              onClose()
-              navigate('/career/campaign-profiles')
-            }
-          })
+            title: t('commandPalette.runCampaign'),
+            subtitle: t('commandPalette.openCampaignProfilesToRun'),
+              action: () => {
+                onClose()
+                navigate('/career/campaigns')
+              }
+            })
         }
 
         setResults(nextResults)
@@ -381,7 +384,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
           linkedinAccountsResult
         ].filter(result => result.status === 'rejected')
         if (requiredFailures.length === 7) {
-          setError('Search is temporarily unavailable.')
+          setError(t('commandPalette.searchUnavailable'))
         }
       }
 
@@ -392,7 +395,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
       active = false
       window.clearTimeout(debounce)
     }
-  }, [navigate, onClose, open, query])
+  }, [navigate, onClose, open, query, t])
 
   const groupedResults = useMemo(() => {
     return results.reduce<Record<ResultGroup, CommandResult[]>>((groups, result) => {
@@ -418,7 +421,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
       onClose()
       navigate(`/agent/executions/${response.execution_id}`)
     } catch {
-      setError('Campaign could not be started from the command palette.')
+      setError(t('commandPalette.runFailed'))
     } finally {
       setRunningCampaign(false)
     }
@@ -438,7 +441,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
         }}
       >
         <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-          <h2 id="command-palette-title" className="sr-only">Command Palette</h2>
+          <h2 id="command-palette-title" className="sr-only">{t('commandPalette.title')}</h2>
           <div className="border-b border-slate-100 p-4">
             <div className="flex items-center gap-3">
               <svg aria-hidden="true" className="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" viewBox="0 0 24 24">
@@ -448,7 +451,7 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
               <input
                 ref={inputRef}
                 className="min-w-0 flex-1 border-0 text-base font-semibold text-slate-900 outline-none placeholder:text-slate-400"
-                placeholder="Search or run a command..."
+                placeholder={t('commandPalette.placeholder')}
                 value={query}
                 onChange={event => setQuery(event.target.value)}
                 onKeyDown={event => {
@@ -479,20 +482,20 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
             </div>
           </div>
 
-          <div id="command-palette-results" className="max-h-[65vh] overflow-y-auto p-3" role="listbox" aria-label="Command palette results">
+          <div id="command-palette-results" className="max-h-[65vh] overflow-y-auto p-3" role="listbox" aria-label={t('commandPalette.resultsLabel')}>
             {loading && (
-              <div className="px-3 py-8 text-center text-sm font-medium text-slate-500">Searching...</div>
+              <div className="px-3 py-8 text-center text-sm font-medium text-slate-500">{t('commandPalette.searching')}</div>
             )}
             {!loading && error && (
               <div className="px-3 py-8 text-center text-sm font-medium text-red-600">{error}</div>
             )}
             {!loading && !error && results.length === 0 && (
-              <EmptyState title="No results" message="Try a campaign, opportunity, execution, or command name." />
+              <EmptyState title={t('commandPalette.noResults')} message={t('commandPalette.noResultsDescription')} />
             )}
             {!loading && !error && (Object.keys(groupedResults) as ResultGroup[]).map(group => groupedResults[group].length > 0 && (
               <section key={group} className="mb-4 last:mb-0">
                 <h3 className="px-3 py-2 text-xs font-black uppercase tracking-[0.16em] text-slate-400">
-                  {group}
+                  {t(`commandPalette.group.${group}` as TranslationKey)}
                 </h3>
                 <div className="space-y-1">
                   {groupedResults[group].map(result => {
@@ -526,18 +529,18 @@ export default function CommandPalette({ open, onClose }: CommandPaletteProps) {
           </div>
 
           <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs font-semibold text-slate-500">
-            <span>Use arrow keys to navigate</span>
-            <span>Enter to open</span>
+            <span>{t('commandPalette.keyboardHint')}</span>
+            <span>{t('commandPalette.enterHint')}</span>
           </div>
         </div>
       </div>
 
       <ConfirmationDialog
         open={campaignToRun !== null}
-        title="Run Campaign"
-        description={campaignToRun ? `Start a new execution for "${campaignToRun.name}"?` : undefined}
-        confirmLabel={runningCampaign ? 'Starting...' : 'Run Campaign'}
-        cancelLabel="Cancel"
+        title={t('campaignRun.confirmTitle')}
+        description={campaignToRun ? t('commandPalette.runConfirmation').replace('{name}', campaignToRun.name) : undefined}
+        confirmLabel={runningCampaign ? t('campaignRun.starting') : t('campaignRun.confirm')}
+        cancelLabel={t('campaignRun.cancel')}
         onCancel={() => {
           if (!runningCampaign) setCampaignToRun(null)
         }}

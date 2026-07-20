@@ -7,12 +7,14 @@ import {
   updateDiscoverySource,
   type DiscoverySource
 } from '../lib/discoverySourceApi'
+import { getCandidateProfile, type CandidateProfile } from '../lib/candidateProfileApi'
 import { listLinkedInAccounts, type LinkedInAccount } from '../lib/linkedinAccountApi'
 import { useLanguage } from '../i18n/LanguageProvider'
 import {
   ConfirmationDialog,
   EmptyState,
   ErrorAlert,
+  InfoAlert,
   LoadingState,
   PageContainer,
   PageHeader,
@@ -31,17 +33,47 @@ function formatDate(value: string | null) {
   }).format(new Date(value))
 }
 
-function isLinkedInJobsUrl(value: string) {
+function searchName(keywords: string, location: string) {
+  const cleanedKeywords = keywords.trim()
+  const cleanedLocation = location.trim()
+  if (cleanedKeywords && cleanedLocation) {
+    return `${cleanedKeywords} - ${cleanedLocation}`
+  }
+  return cleanedKeywords || cleanedLocation
+}
+
+function firstAvailable(values: string[]) {
+  return values.map(value => value.trim()).find(Boolean) ?? ''
+}
+
+function smartKeywords(profile: CandidateProfile | null) {
+  if (!profile) return ''
+  return profile.desired_occupation.trim() || profile.current_occupation.trim()
+}
+
+function smartLocation(profile: CandidateProfile | null) {
+  if (!profile) return ''
+  const province = firstAvailable(profile.preferred_provinces)
+  if (province) return province
+  return firstAvailable(profile.preferred_countries)
+}
+
+function smartDiscoveryDefaults(profile: CandidateProfile | null) {
+  const searchKeywords = smartKeywords(profile)
+  const location = smartLocation(profile)
+  return {
+    name: searchName(searchKeywords, location),
+    searchKeywords,
+    location
+  }
+}
+
+function parseSearchParameter(searchUrl: string, parameter: string) {
   try {
-    const url = new URL(value)
-    const host = url.hostname.toLowerCase()
-    return (
-      ['http:', 'https:'].includes(url.protocol)
-      && (host === 'linkedin.com' || host.endsWith('.linkedin.com'))
-      && url.pathname.toLowerCase().startsWith('/jobs')
-    )
+    const url = new URL(searchUrl)
+    return url.searchParams.get(parameter) ?? ''
   } catch {
-    return false
+    return ''
   }
 }
 
@@ -53,7 +85,9 @@ type FormState = {
   sourceId: string | null
   name: string
   linkedinAccountId: string
-  searchUrl: string
+  searchKeywords: string
+  location: string
+  legacySearchUrl: string
   executionIntervalHours: string
   active: boolean
 }
@@ -62,7 +96,9 @@ const emptyForm: FormState = {
   sourceId: null,
   name: '',
   linkedinAccountId: '',
-  searchUrl: '',
+  searchKeywords: '',
+  location: '',
+  legacySearchUrl: '',
   executionIntervalHours: '6',
   active: true
 }
@@ -71,6 +107,7 @@ export default function DiscoverySourcesPage() {
   const { t } = useLanguage()
   const [sources, setSources] = useState<DiscoverySource[]>([])
   const [accounts, setAccounts] = useState<LinkedInAccount[]>([])
+  const [candidateProfile, setCandidateProfile] = useState<CandidateProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [includeInactive, setIncludeInactive] = useState(false)
@@ -83,13 +120,20 @@ export default function DiscoverySourcesPage() {
   function load() {
     setLoading(true)
     setError(null)
-    Promise.all([
+    Promise.allSettled([
       listDiscoverySources(includeInactive),
-      listLinkedInAccounts(false)
+      listLinkedInAccounts(false),
+      getCandidateProfile()
     ])
-      .then(([sourceItems, accountItems]) => {
+      .then(([sourceResult, accountResult, profileResult]) => {
+        if (sourceResult.status === 'rejected' || accountResult.status === 'rejected') {
+          throw sourceResult.status === 'rejected' ? sourceResult.reason : accountResult.reason
+        }
+        const sourceItems = sourceResult.value
+        const accountItems = accountResult.value
         setSources(sourceItems)
         setAccounts(accountItems)
+        setCandidateProfile(profileResult.status === 'fulfilled' ? profileResult.value : null)
         if (!form.linkedinAccountId) {
           setForm(current => ({
             ...current,
@@ -106,12 +150,17 @@ export default function DiscoverySourcesPage() {
   const activeCount = useMemo(() => sources.filter(source => source.active).length, [sources])
   const inactiveCount = sources.length - activeCount
   const canSubmit = accounts.length > 0
+  const smartDefaultsApplied = !form.sourceId && Boolean(candidateProfile) && Boolean(form.searchKeywords || form.location)
 
   function openCreateForm() {
     setError(null)
+    const defaults = smartDiscoveryDefaults(candidateProfile)
     setForm({
       ...emptyForm,
-      linkedinAccountId: accounts.find(account => account.default_account)?.account_id ?? accounts[0]?.account_id ?? ''
+      linkedinAccountId: accounts.find(account => account.default_account)?.account_id ?? accounts[0]?.account_id ?? '',
+      name: defaults.name,
+      searchKeywords: defaults.searchKeywords,
+      location: defaults.location
     })
     setFormOpen(true)
   }
@@ -122,7 +171,9 @@ export default function DiscoverySourcesPage() {
       sourceId: source.source_id,
       name: source.name,
       linkedinAccountId: source.linkedin_account_id,
-      searchUrl: source.search_url,
+      searchKeywords: source.search_keywords ?? parseSearchParameter(source.search_url, 'keywords'),
+      location: source.location ?? parseSearchParameter(source.search_url, 'location'),
+      legacySearchUrl: source.search_url,
       executionIntervalHours: String(source.execution_interval_hours),
       active: source.active
     })
@@ -130,14 +181,11 @@ export default function DiscoverySourcesPage() {
   }
 
   function validateForm() {
-    if (!form.name.trim()) {
-      return t('discoverySources.nameRequired')
+    if (!form.searchKeywords.trim()) {
+      return t('discoverySources.keywordsRequired')
     }
-    if (!form.searchUrl.trim()) {
-      return t('discoverySources.urlRequired')
-    }
-    if (!isLinkedInJobsUrl(form.searchUrl)) {
-      return t('discoverySources.linkedinJobsUrlRequired')
+    if (!form.location.trim()) {
+      return t('discoverySources.locationRequired')
     }
     if (!form.linkedinAccountId) {
       return t('discoverySources.accountRequired')
@@ -158,8 +206,10 @@ export default function DiscoverySourcesPage() {
     setError(null)
     const payload = {
       linkedin_account_id: form.linkedinAccountId,
-      name: form.name,
-      search_url: form.searchUrl,
+      name: form.name.trim() || searchName(form.searchKeywords, form.location),
+      search_url: form.legacySearchUrl || null,
+      search_keywords: form.searchKeywords,
+      location: form.location,
       active: form.active,
       execution_interval_hours: Number(form.executionIntervalHours)
     }
@@ -245,6 +295,11 @@ export default function DiscoverySourcesPage() {
       {formOpen && (
         <SectionCard title={form.sourceId ? t('discoverySources.editTitle') : t('discoverySources.createTitle')} description={t('discoverySources.formDescription')}>
           <form className="space-y-4" onSubmit={handleSubmit}>
+            {smartDefaultsApplied && (
+              <InfoAlert className="text-sm">
+                {t('discoverySources.prefilledFromCandidateProfile')}
+              </InfoAlert>
+            )}
             <div className="grid gap-4 lg:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">{t('discoverySources.name')}</span>
@@ -252,9 +307,9 @@ export default function DiscoverySourcesPage() {
                   className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
                   value={form.name}
                   onChange={event => setForm(current => ({ ...current, name: event.target.value }))}
-                  placeholder="QA Automation Canada"
-                  required
+                  placeholder={searchName(form.searchKeywords, form.location) || 'QA Automation - Canada'}
                 />
+                <span className="mt-1 block text-xs font-medium text-slate-500">{t('discoverySources.nameHint')}</span>
               </label>
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">{t('discoverySources.linkedinAccount')}</span>
@@ -270,13 +325,23 @@ export default function DiscoverySourcesPage() {
                   ))}
                 </select>
               </label>
-              <label className="block lg:col-span-2">
-                <span className="text-sm font-medium text-slate-700">{t('discoverySources.searchUrl')}</span>
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">{t('discoverySources.searchKeywords')}</span>
                 <input
                   className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-                  value={form.searchUrl}
-                  onChange={event => setForm(current => ({ ...current, searchUrl: event.target.value }))}
-                  placeholder="https://www.linkedin.com/jobs/search/?keywords=QA%20Automation"
+                  value={form.searchKeywords}
+                  onChange={event => setForm(current => ({ ...current, searchKeywords: event.target.value }))}
+                  placeholder="QA Automation"
+                  required
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-slate-700">{t('discoverySources.location')}</span>
+                <input
+                  className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+                  value={form.location}
+                  onChange={event => setForm(current => ({ ...current, location: event.target.value }))}
+                  placeholder="Canada"
                   required
                 />
               </label>
@@ -349,7 +414,11 @@ export default function DiscoverySourcesPage() {
                     <h4 className="truncate text-base font-extrabold text-agent-primary">{source.name}</h4>
                     <StatusBadge tone={source.active ? 'emerald' : 'slate'}>{source.active ? t('discoverySources.activeStatus') : t('discoverySources.inactiveStatus')}</StatusBadge>
                   </div>
-                  <a className="mt-2 block truncate text-sm font-medium text-brand-700 hover:text-brand-900" href={source.search_url} rel="noreferrer" target="_blank">
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-600">
+                    <span><span className="font-semibold">{t('discoverySources.keywords')}:</span> {source.search_keywords || '-'}</span>
+                    <span><span className="font-semibold">{t('discoverySources.locationShort')}:</span> {source.location || '-'}</span>
+                  </div>
+                  <a className="mt-2 block truncate text-xs font-medium text-brand-700 hover:text-brand-900" href={source.search_url} rel="noreferrer" target="_blank">
                     {source.search_url}
                   </a>
                 </div>
